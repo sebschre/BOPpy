@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List
-from ase.bop.bopatoms import BOPAtoms
+from .bopatoms import BOPAtoms
 from ase.neighborlist import NeighborList
 from scipy.spatial.transform import Rotation
 

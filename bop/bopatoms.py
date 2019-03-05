@@ -1,5 +1,5 @@
 from ase.atoms import Atoms
-from ase.bop.bopatom import BOPAtom
+from .bopatom import BOPAtom
 import numbers
 
 
