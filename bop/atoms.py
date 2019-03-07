@@ -36,8 +36,10 @@ class BOPAtoms(Atoms):
     def __init__(self, *args, onsite_levels=None, **kwargs):
         # only use named arguments to avoid confusion with order of parent class constructor arguments
         super().__init__(*args, **kwargs)
-        self.set_array('onsite_levels', onsite_levels, dtype='float')
         self.graph = nx.Graph()
+        for atom in self:
+            self.graph.add_node(atom)
+        self.set_array('onsite_levels', onsite_levels, dtype='float')
 
     def __getitem__(self, i):
         if isinstance(i, numbers.Integral):
