@@ -1,5 +1,6 @@
 from ase.atom import Atom, atomproperty, names, chemical_symbols
-from ase.atoms import Atoms
+from ase.atoms import *
+import numpy as np
 import numbers
 import networkx as nx
 
@@ -11,6 +12,8 @@ names['stoner_integral']          = ('stoner_integrals', 0.76)
 
 
 class BOPAtom(Atom):
+    """ A BOPAtom class
+    """
     onsite_level             = atomproperty('onsite_level', 'Atomic onsite level')
     number_valence_orbitals  = atomproperty('number_valence_orbitals', 'Number of valence orbtials')
     number_valence_electrons = atomproperty('number_valence_electrons', 'Number of valence electrons')
@@ -22,7 +25,7 @@ class BOPAtom(Atom):
                  number_valence_electrons=None,
                  stoner_integral=None,
                  **kwargs):
-        super().__init__(*args, **kwargs)
+        Atom.__init__(self, *args, **kwargs)
         if self.atoms is None:
             # This atom is not part of any Atoms object:
             self.data['onsite_level'] = onsite_level
@@ -30,16 +33,71 @@ class BOPAtom(Atom):
             self.data['number_valence_electrons'] = number_valence_electrons
             self.data['stoner_integral'] = stoner_integral
 
+    def __repr__(self):
+        return 'BOP'+super().__repr__()
+
+    def __hash__(self):
+        """
+        This should return a hash function that does not change during lifetime,
+        i.e. hashing the position array is not an option
+        TODO: avoid hash collision
+        :return:
+        """
+        if isinstance(self.index, numbers.Integral):
+            return self.index
+        else:
+            return super().__hash__()
+
+    def __eq__(self, other):
+        """Check for equality of two BOPAtom objects.
+        """
+        if not isinstance(other, Atom):
+            return False
+        # return self.data == other.data
+        return self.symbol == other.symbol and \
+               np.all(self.position == other.position)
+
+    def __ne__(self, other):
+        # Not strictly necessary, but to avoid having both x==y and x!=y
+        # True at the same time
+        return not (self == other)
+
+
+def get_bopatoms(atoms: Atoms):
+    atoms.__class__ = BOPAtoms
+    atoms._init_bopatoms()
+    return atoms
+
 
 class BOPAtoms(Atoms):
+    """ A BOPAtoms class
+    """
 
-    def __init__(self, *args, onsite_levels=None, **kwargs):
-        # only use named arguments to avoid confusion with order of parent class constructor arguments
+    def __init__(self, *args,
+                 onsite_levels=None,
+                 **kwargs):
         super().__init__(*args, **kwargs)
-        self.graph = nx.Graph()
-        for atom in self:
-            self.graph.add_node(atom)
+        self._init_bopatoms(onsite_levels)
+
+    def _init_bopatoms(self, onsite_levels=None):
         self.set_array('onsite_levels', onsite_levels, dtype='float')
+        self.graph = nx.Graph()
+        self._update_graph_nodes()
+        self._update_graph_edges()
+
+    def _update_graph_nodes(self):
+        for atom in self:
+            self.graph.add_node(atom.index, atom=atom)
+
+    def _update_graph_edges(self):
+        all_distances = self.get_all_distances(mic=True)
+        # TODO: get cutoff from BOPcalculator.model
+        cutoff = 3
+        node_array = np.array(list(self.graph.nodes))
+        for node in node_array:
+            distances = all_distances[node, :]
+            nodes_in_cutoff = node_array[distances < cutoff]
+            self.graph.add_edges_from([(node, other) for other in nodes_in_cutoff])
 
     def __getitem__(self, i):
         if isinstance(i, numbers.Integral):
