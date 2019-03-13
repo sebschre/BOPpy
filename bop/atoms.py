@@ -93,11 +93,14 @@ class BOPAtoms(Atoms):
         all_distances = self.get_all_distances(mic=True)
         # TODO: get cutoff from BOPcalculator.model
         cutoff = 3
-        node_array = np.array(list(self.graph.nodes))
-        for node in node_array:
+        for node in self.graph.nodes:
             distances = all_distances[node, :]
-            nodes_in_cutoff = node_array[distances < cutoff]
-            self.graph.add_edges_from([(node, other) for other in nodes_in_cutoff])
+            nodes_in_cutoff =\
+                [nod for nod, y in zip(self.graph.nodes, distances < cutoff) if y]
+            bond = None
+            print(self.graph.nodes[node])
+            self.graph.add_edges_from(
+                [(node, other, {'bond': bond}) for other in nodes_in_cutoff])
 
     def __getitem__(self, i):
         if isinstance(i, numbers.Integral):
