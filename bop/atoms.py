@@ -1,5 +1,6 @@
 from ase.atom import Atom, atomproperty, names, chemical_symbols
 from ase.atoms import *
+from ase.neighborlist import NeighborList
 import numpy as np
 import numbers
 import networkx as nx
@@ -80,10 +81,16 @@ class BOPAtoms(Atoms):
         self._init_bopatoms(onsite_levels)
 
     def _init_bopatoms(self, onsite_levels=None):
+        self._update_nl()
         self.set_array('onsite_levels', onsite_levels, dtype='float')
         self.graph = nx.Graph()
         self._update_graph_nodes()
         self._update_graph_edges()
+
+    def _update_nl(self):
+        cutoff = 3
+        self.nl = NeighborList([cutoff] * len(self), skin=0.3, self_interaction=True)
+        self.nl.update(self)
 
     def _update_graph_nodes(self):
         for atom in self:
@@ -91,16 +98,16 @@ class BOPAtoms(Atoms):
 
     def _update_graph_edges(self):
         all_distances = self.get_all_distances(mic=True)
-        # TODO: get cutoff from BOPcalculator.model
-        cutoff = 3
         for node in self.graph.nodes:
-            distances = all_distances[node, :]
-            nodes_in_cutoff =\
-                [nod for nod, y in zip(self.graph.nodes, distances < cutoff) if y]
-            bond = None
-            print(self.graph.nodes[node])
+            indices, offsets = self.nl.get_neighbors(node)
+            distances = self.get_distances(node, indices)
+            print([self[i].number_valence_orbitals for i in indices])
+            bonds_ddsigma = np.exp(-distances)
+            bonds_ddpi = np.exp(-distances)
+            bonds_ddelta = np.exp(-distances)
             self.graph.add_edges_from(
-                [(node, other, {'bond': bond}) for other in nodes_in_cutoff])
+                [(node, other, {'bond': bond}) for (other, bond) in zip(indices, bonds_ddsigma)]
+            )
 
     def __getitem__(self, i):
         if isinstance(i, numbers.Integral):
