@@ -2,6 +2,9 @@ import numpy as np
 from .bopatoms import BOPAtoms
 from ase.neighborlist import NeighborList
 from scipy.spatial.transform import Rotation
+from abc import ABCMeta
+from typing import Tuple, Callable
+import numpy as np
 
 
 class TwoCenterHoppingIntegrals:
@@ -123,3 +126,81 @@ class TwoCenterHoppingIntegrals:
         rot[0, 4] = sqrt(3) * sin(phi) * cos(phi) * sin(theta)**2
 
         return rot
+
+
+class Bond(metaclass=ABCMeta):
+    orbitals = (None, None)
+
+    def bond_integrals(self, distance: float) -> Tuple[float, ...]:
+        raise NotImplementedError
+
+    def bond_matrix(self, distance: float):
+        raise NotImplementedError
+
+
+class DDBond(Bond, metaclass=ABCMeta):
+    orbitals = (5, 5)
+
+    def sigma(self) -> Callable[[float], float]:
+        raise NotImplementedError
+
+    def pi(self) -> Callable[[float], float]:
+        raise NotImplementedError
+
+    def delta(self) -> Callable[[float], float]:
+        raise NotImplementedError
+
+    def bond_integrals(self, distance: float) -> Tuple[float, float, float]:
+        return self.sigma()(distance), self.pi()(distance), self.delta()(distance)
+
+    def bond_matrix(self, distance: float):
+        (sigma, pi, delta) = self.bond_integrals(distance)
+        return np.diag([sigma]*1+[pi]*2+[delta]*2)
+
+
+class PPBond(Bond, metaclass=ABCMeta):
+    orbitals = (3, 3)
+
+    def sigma(self) -> Callable[[float], float]:
+        raise NotImplementedError
+
+    def pi(self) -> Callable[[float], float]:
+        raise NotImplementedError
+
+    def bond_integrals(self, distance: float) -> Tuple[float, float]:
+        return self.sigma()(distance), self.pi()(distance)
+
+    def bond_matrix(self, distance: float):
+        (sigma, pi) = self.bond_integrals(distance)
+        return np.diag([sigma]*1+[pi]*2)
+
+
+class SSBond(Bond, metaclass=ABCMeta):
+    orbitals = (1, 1)
+
+    def sigma(self) -> Callable[[float], float]:
+        raise NotImplementedError
+
+    def bond_integrals(self, distance: float) -> Tuple[float]:
+        return self.sigma()(distance),
+
+    def bond_matrix(self, distance: float):
+        sigma = self.bond_integrals(distance)
+        return np.diag([sigma])
+
+
+class ConcreteDDBond(DDBond):
+    def sigma(self):
+        def f(distance):
+            return np.exp(-distance)
+        return f
+
+    def pi(self):
+        def f(distance):
+            return np.exp(-distance)
+        return f
+
+    def delta(self):
+        def f(distance):
+            return np.exp(-distance)
+        return f
