@@ -1,5 +1,4 @@
-import numpy as np
-from .bopatoms import BOPAtoms
+from .atoms import BOPAtoms
 from ase.neighborlist import NeighborList
 from scipy.spatial.transform import Rotation
 from abc import ABCMeta
@@ -141,17 +140,17 @@ class Bond(metaclass=ABCMeta):
 class DDBond(Bond, metaclass=ABCMeta):
     orbitals = (5, 5)
 
-    def sigma(self) -> Callable[[float], float]:
+    def sigma(self, distance, *args, **kwargs) -> float:
         raise NotImplementedError
 
-    def pi(self) -> Callable[[float], float]:
+    def pi(self, distance, *args, **kwargs) -> float:
         raise NotImplementedError
 
-    def delta(self) -> Callable[[float], float]:
+    def delta(self, distance, *args, **kwargs) -> float:
         raise NotImplementedError
 
     def bond_integrals(self, distance: float) -> Tuple[float, float, float]:
-        return self.sigma()(distance), self.pi()(distance), self.delta()(distance)
+        return self.sigma(distance), self.pi(distance), self.delta(distance)
 
     def bond_matrix(self, distance: float):
         (sigma, pi, delta) = self.bond_integrals(distance)
@@ -161,14 +160,14 @@ class DDBond(Bond, metaclass=ABCMeta):
 class PPBond(Bond, metaclass=ABCMeta):
     orbitals = (3, 3)
 
-    def sigma(self) -> Callable[[float], float]:
+    def sigma(self, distance, *args, **kwargs) -> float:
         raise NotImplementedError
 
-    def pi(self) -> Callable[[float], float]:
+    def pi(self, distance, *args, **kwargs) -> float:
         raise NotImplementedError
 
     def bond_integrals(self, distance: float) -> Tuple[float, float]:
-        return self.sigma()(distance), self.pi()(distance)
+        return self.sigma(distance), self.pi(distance)
 
     def bond_matrix(self, distance: float):
         (sigma, pi) = self.bond_integrals(distance)
@@ -178,11 +177,11 @@ class PPBond(Bond, metaclass=ABCMeta):
 class SSBond(Bond, metaclass=ABCMeta):
     orbitals = (1, 1)
 
-    def sigma(self) -> Callable[[float], float]:
+    def sigma(self, distance, *args, **kwargs) -> float:
         raise NotImplementedError
 
     def bond_integrals(self, distance: float) -> Tuple[float]:
-        return self.sigma()(distance),
+        return self.sigma(distance),
 
     def bond_matrix(self, distance: float):
         sigma = self.bond_integrals(distance)
@@ -190,17 +189,11 @@ class SSBond(Bond, metaclass=ABCMeta):
 
 
 class ConcreteDDBond(DDBond):
-    def sigma(self):
-        def f(distance):
-            return np.exp(-distance)
-        return f
+    def sigma(self, distance, *args, **kwargs):
+        return np.exp(-distance)
 
-    def pi(self):
-        def f(distance):
-            return np.exp(-distance)
-        return f
+    def pi(self, distance, *args, **kwargs):
+        return np.exp(-distance)
 
-    def delta(self):
-        def f(distance):
-            return np.exp(-distance)
-        return f
+    def delta(self, distance, *args, **kwargs):
+        return np.exp(-distance)
