@@ -1,4 +1,4 @@
-from .atoms import BOPAtoms
+from .atoms import BOPAtoms, BOPAtom
 from ase.neighborlist import NeighborList
 from scipy.spatial.transform import Rotation
 from abc import ABCMeta
@@ -127,6 +127,15 @@ class TwoCenterHoppingIntegrals:
         return rot
 
 
+class Hop:
+    def __init__(self, atom1: BOPAtom, atom2: BOPAtom):
+        self.atoms = (atom1, atom2)
+        # todo make sure atoms have an index (are part of Atoms object)
+
+    def matrix(self):
+        pass
+
+
 class Bond(metaclass=ABCMeta):
     orbitals = (None, None)
 
@@ -139,6 +148,15 @@ class Bond(metaclass=ABCMeta):
 
 class DDBond(Bond, metaclass=ABCMeta):
     orbitals = (5, 5)
+
+    def __init__(self,
+                 sigma: Callable[[float, ...], float],
+                 pi: Callable[[float, ...], float],
+                 delta: Callable[[float, ...], float],
+                 ):
+        self.sigma = sigma
+        self.pi = pi
+        self.delta = delta
 
     def sigma(self, distance, *args, **kwargs) -> float:
         raise NotImplementedError
