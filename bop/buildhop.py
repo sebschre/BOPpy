@@ -136,7 +136,25 @@ class Hop:
         pass
 
 
-class Bond(metaclass=ABCMeta):
+class Bond:
+
+    def __init__(self, orbitals: Tuple[int, int]):
+        self.orbitals = orbitals
+
+    def ss_sigma(self, distance) -> float:
+        raise NotImplementedError
+
+    def bond_integrals(self, distance: float) -> Tuple[float, ...]:
+        if self.orbitals == (1, 1):
+            return self.ss_sigma(distance),
+        else:
+            raise NotImplementedError
+
+    def bond_matrix(self, distance: float):
+        raise NotImplementedError
+
+
+class BaseBond(metaclass=ABCMeta):
     orbitals = (None, None)
 
     def bond_integrals(self, distance: float) -> Tuple[float, ...]:
@@ -146,7 +164,7 @@ class Bond(metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class DDBond(Bond, metaclass=ABCMeta):
+class DDBond(BaseBond, metaclass=ABCMeta):
     orbitals = (5, 5)
 
     def __init__(self,
@@ -175,7 +193,7 @@ class DDBond(Bond, metaclass=ABCMeta):
         return np.diag([sigma]*1+[pi]*2+[delta]*2)
 
 
-class PPBond(Bond, metaclass=ABCMeta):
+class PPBond(BaseBond, metaclass=ABCMeta):
     orbitals = (3, 3)
 
     def sigma(self, distance, *args, **kwargs) -> float:
@@ -192,7 +210,7 @@ class PPBond(Bond, metaclass=ABCMeta):
         return np.diag([sigma]*1+[pi]*2)
 
 
-class SSBond(Bond, metaclass=ABCMeta):
+class SSBond(BaseBond, metaclass=ABCMeta):
     orbitals = (1, 1)
 
     def sigma(self, distance, *args, **kwargs) -> float:
@@ -215,3 +233,21 @@ class ConcreteDDBond(DDBond):
 
     def delta(self, distance, *args, **kwargs):
         return np.exp(-distance)
+
+
+class Repulsive:
+    pass
+
+
+class BOPModel:
+
+    def __init__(self,
+                 dd: ConcreteDDBond = None,
+                 pp=None,
+                 ss=None,
+                 repulsive: Repulsive=None):
+
+        self.dd = dd
+        self.pp = pp
+        self.ss = ss
+        self.repulsive = repulsive
