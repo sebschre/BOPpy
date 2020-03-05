@@ -1,5 +1,4 @@
 from .atoms import BOPAtoms, BOPAtom
-from ase.neighborlist import NeighborList
 from scipy.spatial.transform import Rotation
 from abc import ABCMeta
 from typing import Tuple, Callable
@@ -9,11 +8,11 @@ import numpy as np
 class TwoCenterHoppingIntegrals:
     def __init__(self, bopatoms: BOPAtoms, cutoffs: list, **kwargs):
         self.bopatoms = bopatoms
-        self.nl = NeighborList(cutoffs=cutoffs,
-                               bothways=True,
-                               self_interaction=False,
-                               **kwargs)
-        self.nl.update(bopatoms)
+        #self.nl = NeighborList(cutoffs=cutoffs,
+        #                       bothways=True,
+        #                       self_interaction=False,
+        #                       **kwargs)
+        #self.nl.update(bopatoms)
 
     def update_hops(self):
         raise NotImplementedError

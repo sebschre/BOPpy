@@ -1,32 +1,28 @@
-from ase.atom import Atom, atomproperty, names, chemical_symbols
-from ase.atoms import *
-from ase.neighborlist import NeighborList
 import numpy as np
 import numbers
 import networkx as nx
+from typing import Tuple
+from bop.coordinate_system import CoordinateSystem
 
 
-names['onsite_level']             = ('onsite_levels', 0.0)
-names['number_valence_orbitals']  = ('numbers_valence_orbitals', 5)  # pure-d valence
-names['number_valence_electrons'] = ('numbers_valence_electrons', 7.0)
-names['stoner_integral']          = ('stoner_integrals', 0.76)
+class Position:
+    def __init__(self,
+                 cs: CoordinateSystem,
+                 direct_coords: Tuple[float, float, float]):
+        self.coordinate_system = cs
+        self.x = direct_coords
 
 
-class BOPAtom(Atom):
+class BOPAtom:
     """ A BOPAtom class
     """
-    onsite_level             = atomproperty('onsite_level', 'Atomic onsite level')
-    number_valence_orbitals  = atomproperty('number_valence_orbitals', 'Number of valence orbtials')
-    number_valence_electrons = atomproperty('number_valence_electrons', 'Number of valence electrons')
-    stoner_integral          = atomproperty('stoner_integral', 'Stoner integral')
 
-    def __init__(self, *args,
+    def __init__(self,
                  onsite_level=None,
                  number_valence_orbitals=None,
                  number_valence_electrons=None,
                  stoner_integral=None,
                  **kwargs):
-        Atom.__init__(self, *args, **kwargs)
         if self.atoms is None:
             # This atom is not part of any Atoms object:
             self.data['onsite_level'] = onsite_level
@@ -52,8 +48,8 @@ class BOPAtom(Atom):
     def __eq__(self, other):
         """Check for equality of two BOPAtom objects.
         """
-        if not isinstance(other, Atom):
-            return False
+        #if not isinstance(other, Atom):
+        #    return False
         # return self.data == other.data
         return self.symbol == other.symbol and \
                np.all(self.position == other.position)
@@ -64,13 +60,8 @@ class BOPAtom(Atom):
         return not (self == other)
 
 
-def get_bopatoms(atoms: Atoms):
-    atoms.__class__ = BOPAtoms
-    atoms._init_bopatoms()
-    return atoms
 
-
-class BOPAtoms(Atoms):
+class BOPAtoms:
     """ A BOPAtoms class
     """
 
@@ -89,8 +80,8 @@ class BOPAtoms(Atoms):
 
     def _update_nl(self):
         cutoff = 3
-        self.nl = NeighborList([cutoff] * len(self), skin=0.3, self_interaction=True)
-        self.nl.update(self)
+        #self.nl = NeighborList([cutoff] * len(self), skin=0.3, self_interaction=True)
+        #self.nl.update(self)
 
     def _update_graph_nodes(self):
         for atom in self:

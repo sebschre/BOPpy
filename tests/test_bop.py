@@ -1,5 +1,5 @@
 import unittest
-from atoms import *
+from bop.atoms import *
 
 
 class TestBOPAtoms(unittest.TestCase):
