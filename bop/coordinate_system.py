@@ -16,7 +16,7 @@ class CoordinateSystem:
         :param axes:
         """
         if np.linalg.det(axes) != 0:
-            self.axes = axes
+            self.axes = np.array(axes)
         else:
             raise ValueError("has to be invertible")
 
@@ -38,3 +38,37 @@ class CoordinateSystem:
 
     def __repr__(self):
         return f"CoordSys: {self.axes}"
+
+
+class Position:
+
+    def __init__(self,
+                 pos_frac: Tuple[float, float, float],
+                 cs: CoordinateSystem = CoordinateSystem()):
+        self.pos_frac = np.array(pos_frac)
+        self.coordinate_system = cs
+
+    @property
+    def pos_global(self):
+        return np.dot(self.coordinate_system.axes, self.pos_frac)
+
+    @pos_global.setter
+    def pos_global(self, value):
+        self.pos_frac = np.dot(np.linalg.inv(self.coordinate_system.axes), value)
+
+    def __repr__(self):
+        return f"Position {self.pos_global}"
+
+    def __eq__(self, other):
+        return np.all(self.pos_global == other.pos_global)
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __add__(self, other):
+        pos_new = self.pos_global + other.pos_global
+        return Position(pos_new)
+
+    def __sub__(self, other):
+        pos_new = self.pos_global - other.pos_global
+        return Position(pos_new)

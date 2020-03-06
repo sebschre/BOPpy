@@ -1,69 +1,29 @@
 import numpy as np
 import numbers
 import networkx as nx
-from typing import Tuple
-from bop.coordinate_system import CoordinateSystem
-
-
-class Position:
-    def __init__(self,
-                 cs: CoordinateSystem,
-                 direct_coords: Tuple[float, float, float]):
-        self.coordinate_system = cs
-        self.x = direct_coords
+from networkx import MultiDiGraph
+from periodictable import elements
+from bop.coordinate_system import Position
 
 
 class BOPAtom:
-    """ A BOPAtom class
-    """
 
-    def __init__(self,
-                 onsite_level=None,
-                 number_valence_orbitals=None,
-                 number_valence_electrons=None,
-                 stoner_integral=None,
-                 **kwargs):
-        if self.atoms is None:
-            # This atom is not part of any Atoms object:
-            self.data['onsite_level'] = onsite_level
-            self.data['number_valence_orbitals'] = number_valence_orbitals
-            self.data['number_valence_electrons'] = number_valence_electrons
-            self.data['stoner_integral'] = stoner_integral
+    def __init__(self, position: Position, element_name: str):
+        if element_name not in (el.symbol for el in elements):
+            raise ValueError(f"Initialized BOPAtom with undefined element_name {element_name}")
+        self.element_name = element_name
+        self.position = position
+        self.onsite_level = None
+        self.number_valence_orbitals = None
+        self.number_valence_electrons = None
+        self.stoner_integral = None
+        self.charge_penalty = None
 
     def __repr__(self):
-        return 'BOP'+super().__repr__()
-
-    def __hash__(self):
-        """
-        This should return a hash function that does not change during lifetime,
-        i.e. hashing the position array is not an option
-        TODO: avoid hash collision
-        :return:
-        """
-        if isinstance(self.index, numbers.Integral):
-            return self.index
-        else:
-            return super().__hash__()
-
-    def __eq__(self, other):
-        """Check for equality of two BOPAtom objects.
-        """
-        #if not isinstance(other, Atom):
-        #    return False
-        # return self.data == other.data
-        return self.symbol == other.symbol and \
-               np.all(self.position == other.position)
-
-    def __ne__(self, other):
-        # Not strictly necessary, but to avoid having both x==y and x!=y
-        # True at the same time
-        return not (self == other)
+        return f"BOPAtom: {self.element_name} at {self.position}"
 
 
-
-class BOPAtoms:
-    """ A BOPAtoms class
-    """
+class BOPGraph(MultiDiGraph):
 
     def __init__(self, *args,
                  onsite_levels=None,

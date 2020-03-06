@@ -1,4 +1,6 @@
 decorator==4.4.2
 networkx==2.4
 numpy==1.18.1
+periodictable==1.5.2
+pyparsing==2.4.6
 scipy==1.4.1
