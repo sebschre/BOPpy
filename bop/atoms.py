@@ -1,9 +1,8 @@
 import numpy as np
-import numbers
 import networkx as nx
-from networkx import MultiDiGraph
 from periodictable import elements
 from bop.coordinate_system import Position
+from typing import List
 
 
 class BOPAtom:
@@ -23,13 +22,16 @@ class BOPAtom:
         return f"BOPAtom: {self.element_name} at {self.position}"
 
 
-class BOPGraph(MultiDiGraph):
+class BOPGraph(nx.Graph):
 
-    def __init__(self, *args,
-                 onsite_levels=None,
-                 **kwargs):
+    def __init__(self, atom_list: List[BOPAtom], *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._init_bopatoms(onsite_levels)
+        self.add_nodes_from(atom_list)
+        # add edges manually
+        # nx.adjacency_matrix(self)**L
+
+    def get_distances(self):
+        pass
 
     def _init_bopatoms(self, onsite_levels=None):
         self._update_nl()
@@ -60,11 +62,11 @@ class BOPGraph(MultiDiGraph):
                 [(node, other, {'bond': bond}) for (other, bond) in zip(indices, bonds_ddsigma)]
             )
 
-    def __getitem__(self, i):
-        if isinstance(i, numbers.Integral):
-            natoms = len(self)
-            if i < -natoms or i >= natoms:
-                raise IndexError('Index out of range.')
-            return BOPAtom(atoms=self, index=i)
-        else:
-            return super().__getitem__(i)
+    #def __getitem__(self, i):
+    #    if isinstance(i, numbers.Integral):
+    #        natoms = len(self)
+    #        if i < -natoms or i >= natoms:
+    #            raise IndexError('Index out of range.')
+    #        return BOPAtom(atoms=self, index=i)
+    #    else:
+    #        return super().__getitem__(i)
