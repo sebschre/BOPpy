@@ -72,3 +72,6 @@ class Position:
     def __sub__(self, other):
         pos_new = self.pos_global - other.pos_global
         return Position(pos_new)
+
+    def get_distance(self, other: 'Position') -> float:
+        return np.sqrt(np.sum((self.pos_global - other.pos_global)**2))

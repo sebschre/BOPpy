@@ -33,6 +33,12 @@ class TestPosition(unittest.TestCase):
         pos3 = Position((0, 1, 0))
         self.assertTrue(pos2 - pos1 == pos3)
 
+    def test_get_distance(self):
+        pos1 = Position((1, 0, 0))
+        pos2 = Position((1, -1.5, 0))
+        dist = pos1.get_distance(pos2)
+        self.assertTrue(dist == 1.5)
+
 
 if __name__ == '__main__':
     unittest.main()
