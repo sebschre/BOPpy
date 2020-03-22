@@ -1,119 +1,127 @@
-from ase.atom import Atom, atomproperty, names, chemical_symbols
-from ase.atoms import *
-from ase.neighborlist import NeighborList
 import numpy as np
-import numbers
 import networkx as nx
+import itertools
+from enum import Enum
+from periodictable import elements
+from bop.coordinate_system import Position
+from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Callable
 
 
-names['onsite_level']             = ('onsite_levels', 0.0)
-names['number_valence_orbitals']  = ('numbers_valence_orbitals', 5)  # pure-d valence
-names['number_valence_electrons'] = ('numbers_valence_electrons', 7.0)
-names['stoner_integral']          = ('stoner_integrals', 0.76)
+class AtomType:
 
-
-class BOPAtom(Atom):
-    """ A BOPAtom class
-    """
-    onsite_level             = atomproperty('onsite_level', 'Atomic onsite level')
-    number_valence_orbitals  = atomproperty('number_valence_orbitals', 'Number of valence orbtials')
-    number_valence_electrons = atomproperty('number_valence_electrons', 'Number of valence electrons')
-    stoner_integral          = atomproperty('stoner_integral', 'Stoner integral')
-
-    def __init__(self, *args,
-                 onsite_level=None,
-                 number_valence_orbitals=None,
-                 number_valence_electrons=None,
-                 stoner_integral=None,
-                 **kwargs):
-        Atom.__init__(self, *args, **kwargs)
-        if self.atoms is None:
-            # This atom is not part of any Atoms object:
-            self.data['onsite_level'] = onsite_level
-            self.data['number_valence_orbitals'] = number_valence_orbitals
-            self.data['number_valence_electrons'] = number_valence_electrons
-            self.data['stoner_integral'] = stoner_integral
-
-    def __repr__(self):
-        return 'BOP'+super().__repr__()
+    def __init__(self, element_name: str, ident: int = 0):
+        if element_name not in (el.symbol for el in elements):
+            raise ValueError(f"Initialized AtomType with undefined element_name {element_name}")
+        self.element_name = element_name
+        self.ident = ident
 
     def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other: 'AtomType'):
+        return self.element_name == other.element_name and self.ident == other.ident
+
+    def __ne__(self, other: 'AtomType'):
+        return not self == other
+
+    def __repr__(self):
+        return f"{self.element_name}({self.ident})"
+
+
+class MolecularOrbital(Enum):
+    SS = 1
+    SP = 2
+    SD = 3
+    PP = 4
+    PD = 5
+    DD = 6
+
+
+class BondDefinitions:
+
+    def __init__(self, atom_types: Iterable[AtomType]):
+        self.atom_types = set(atom_types)
+
+    def __contains__(self, atom_type: AtomType):
+        return atom_type in self.atom_types
+
+    def get_bond_func(self, atom_type1: AtomType, atom_type2: AtomType) -> Callable:
         """
-        This should return a hash function that does not change during lifetime,
-        i.e. hashing the position array is not an option
-        TODO: avoid hash collision
+        TODO: make this a property?
+        :param atom_type1:
+        :param atom_type2:
         :return:
         """
-        if isinstance(self.index, numbers.Integral):
-            return self.index
-        else:
-            return super().__hash__()
+        if atom_type1 not in self.atom_types or atom_type2 not in self.atom_types:
+            raise ValueError(f"atom type {atom_type1} or {atom_type2} not in BondDefinitions")
+        return lambda x: np.exp(-x)
 
-    def __eq__(self, other):
-        """Check for equality of two BOPAtom objects.
+
+class BOPAtom:
+
+    def __init__(self,
+                 position: Union[Position, Tuple[float, float, float]],
+                 atom_type: Union[AtomType, str]):
+        if atom_type is not AtomType:
+            atom_type = AtomType(atom_type)
+        self.atom_type = atom_type
+        if type(position) is not Position:
+            position = Position(position)
+        self.position = position
+        self.onsite_level = None
+        self.number_valence_orbitals = None
+        self.number_valence_electrons = None
+        self.stoner_integral = None
+        self.charge_penalty = None
+
+    def __repr__(self):
+        return f"{self.atom_type} at {self.position}"
+
+
+class BOPGraph(nx.Graph):
+
+    def __init__(self,
+                 atom_list: List[BOPAtom],
+                 bond_definitions: BondDefinitions = None):
+        super(BOPGraph, self).__init__()
+        self.add_nodes_from(atom_list)
+        self.bond_definitions = bond_definitions
+        # nx.adjacency_matrix(self)**L
+
+    def update_bond_definitions(self, bond_definitions: BondDefinitions) -> None:
+        self.bond_definitions = bond_definitions
+
+    def update_edges(self, cutoff=3) -> None:
+        for (pair, distance) in self._get_distances():
+            if distance <= cutoff:
+                self.add_edge(*pair)
+            else:
+                if self.has_edge(*pair):
+                    self.remove_edge(*pair)
+
+    def _get_distances(self) -> Iterator[Tuple[Tuple[BOPAtom, BOPAtom], float]]:
         """
-        if not isinstance(other, Atom):
-            return False
-        # return self.data == other.data
-        return self.symbol == other.symbol and \
-               np.all(self.position == other.position)
-
-    def __ne__(self, other):
-        # Not strictly necessary, but to avoid having both x==y and x!=y
-        # True at the same time
-        return not (self == other)
+        TODO: return pairs only once
+        :return:
+        """
+        for pair in circular_pairwise(self.nodes):
+            yield (pair, pair[0].position.get_distance(pair[1].position))
 
 
-def get_bopatoms(atoms: Atoms):
-    atoms.__class__ = BOPAtoms
-    atoms._init_bopatoms()
-    return atoms
+T = TypeVar('T')
 
 
-class BOPAtoms(Atoms):
-    """ A BOPAtoms class
+def circular_pairwise(it: Iterator[T]) -> Iterator[Tuple[T, T]]:
     """
-
-    def __init__(self, *args,
-                 onsite_levels=None,
-                 **kwargs):
-        super().__init__(*args, **kwargs)
-        self._init_bopatoms(onsite_levels)
-
-    def _init_bopatoms(self, onsite_levels=None):
-        self._update_nl()
-        self.set_array('onsite_levels', onsite_levels, dtype='float')
-        self.graph = nx.Graph()
-        self._update_graph_nodes()
-        self._update_graph_edges()
-
-    def _update_nl(self):
-        cutoff = 3
-        self.nl = NeighborList([cutoff] * len(self), skin=0.3, self_interaction=True)
-        self.nl.update(self)
-
-    def _update_graph_nodes(self):
-        for atom in self:
-            self.graph.add_node(atom.index, atom=atom)
-
-    def _update_graph_edges(self):
-        all_distances = self.get_all_distances(mic=True)
-        for node in self.graph.nodes:
-            indices, offsets = self.nl.get_neighbors(node)
-            distances = self.get_distances(node, indices)
-            print([self[i].number_valence_orbitals for i in indices])
-            bonds_ddsigma = np.exp(-distances)
-            bonds_ddpi = np.exp(-distances)
-            bonds_ddelta = np.exp(-distances)
-            self.graph.add_edges_from(
-                [(node, other, {'bond': bond}) for (other, bond) in zip(indices, bonds_ddsigma)]
-            )
-
-    def __getitem__(self, i):
-        if isinstance(i, numbers.Integral):
-            natoms = len(self)
-            if i < -natoms or i >= natoms:
-                raise IndexError('Index out of range.')
-            return BOPAtom(atoms=self, index=i)
-        else:
-            return super().__getitem__(i)
+    https://stackoverflow.com/a/36918890/573256
+    :return:
+    """
+    if hasattr(it, '__iter__'):
+        first, snd = itertools.tee(it)
+        second = itertools.cycle(snd)
+        next(second)
+        return zip(first, second)
+    else:
+        second = itertools.cycle(it)
+        next(second)
+        return zip(it, second)
