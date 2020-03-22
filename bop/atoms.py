@@ -27,15 +27,25 @@ class BOPAtom:
 
 class BOPGraph(nx.DiGraph):
 
-    def __init__(self, atom_list: List[BOPAtom], cutoff=3):
+    def __init__(self, atom_list: List[BOPAtom]):
         super(BOPGraph, self).__init__()
         self.add_nodes_from(atom_list)
-        # add edges manually
         # nx.adjacency_matrix(self)**L
 
-    def get_distances(self) -> Iterator[Tuple[Tuple[BOPAtom, BOPAtom], float]]:
-        for pair in circular_pairwise(self.nodes):
+    def update_edges(self, cutoff=3):
+        for (pair, distance) in self._get_distances():
+            if distance <= cutoff:
+                self.add_edge(*pair)
+            else:
+                if self.has_edge(*pair):
+                    self.remove_edge(*pair)
 
+    def _get_distances(self) -> Iterator[Tuple[Tuple[BOPAtom, BOPAtom], float]]:
+        """
+        TODO: return pairs only once
+        :return:
+        """
+        for pair in circular_pairwise(self.nodes):
             yield (pair, pair[0].position.get_distance(pair[1].position))
 
     def _init_bopatoms(self, onsite_levels=None):
