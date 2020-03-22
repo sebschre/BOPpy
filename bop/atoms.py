@@ -1,17 +1,70 @@
 import numpy as np
 import networkx as nx
 import itertools
+from enum import Enum
 from periodictable import elements
 from bop.coordinate_system import Position
-from typing import List, Iterator, TypeVar, Tuple
+from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Callable
+
+
+class AtomType:
+
+    def __init__(self, element_name: str, ident: int = 0):
+        if element_name not in (el.symbol for el in elements):
+            raise ValueError(f"Initialized AtomType with undefined element_name {element_name}")
+        self.element_name = element_name
+        self.ident = ident
+
+    def __hash__(self):
+        return super().__hash__()
+
+    def __eq__(self, other: 'AtomType'):
+        return self.element_name == other.element_name and self.ident == other.ident
+
+    def __ne__(self, other: 'AtomType'):
+        return not self == other
+
+    def __repr__(self):
+        return f"{self.element_name}({self.ident})"
+
+
+class MolecularOrbital(Enum):
+    SS = 1
+    SP = 2
+    SD = 3
+    PP = 4
+    PD = 5
+    DD = 6
+
+
+class BondDefinitions:
+
+    def __init__(self, atom_types: Iterable[AtomType]):
+        self.atom_types = set(atom_types)
+
+    def __contains__(self, atom_type: AtomType):
+        return atom_type in self.atom_types
+
+    def get_bond_func(self, atom_type1: AtomType, atom_type2: AtomType) -> Callable:
+        """
+        TODO: make this a property?
+        :param atom_type1:
+        :param atom_type2:
+        :return:
+        """
+        if atom_type1 not in self.atom_types or atom_type2 not in self.atom_types:
+            raise ValueError(f"atom type {atom_type1} or {atom_type2} not in BondDefinitions")
+        return lambda x: np.exp(-x)
 
 
 class BOPAtom:
 
-    def __init__(self, position: Position, element_name: str):
-        if element_name not in (el.symbol for el in elements):
-            raise ValueError(f"Initialized BOPAtom with undefined element_name {element_name}")
-        self.element_name = element_name
+    def __init__(self,
+                 position: Union[Position, Tuple[float, float, float]],
+                 atom_type: Union[AtomType, str]):
+        if atom_type is not AtomType:
+            atom_type = AtomType(atom_type)
+        self.atom_type = atom_type
         if type(position) is not Position:
             position = Position(position)
         self.position = position
@@ -22,17 +75,23 @@ class BOPAtom:
         self.charge_penalty = None
 
     def __repr__(self):
-        return f"BOPAtom: {self.element_name} at {self.position}"
+        return f"{self.atom_type} at {self.position}"
 
 
-class BOPGraph(nx.DiGraph):
+class BOPGraph(nx.Graph):
 
-    def __init__(self, atom_list: List[BOPAtom]):
+    def __init__(self,
+                 atom_list: List[BOPAtom],
+                 bond_definitions: BondDefinitions = None):
         super(BOPGraph, self).__init__()
         self.add_nodes_from(atom_list)
+        self.bond_definitions = bond_definitions
         # nx.adjacency_matrix(self)**L
 
-    def update_edges(self, cutoff=3):
+    def update_bond_definitions(self, bond_definitions: BondDefinitions) -> None:
+        self.bond_definitions = bond_definitions
+
+    def update_edges(self, cutoff=3) -> None:
         for (pair, distance) in self._get_distances():
             if distance <= cutoff:
                 self.add_edge(*pair)
@@ -47,44 +106,6 @@ class BOPGraph(nx.DiGraph):
         """
         for pair in circular_pairwise(self.nodes):
             yield (pair, pair[0].position.get_distance(pair[1].position))
-
-    def _init_bopatoms(self, onsite_levels=None):
-        self._update_nl()
-        self.set_array('onsite_levels', onsite_levels, dtype='float')
-        self.graph = nx.Graph()
-        self._update_graph_nodes()
-        self._update_graph_edges()
-
-    def _update_nl(self):
-        cutoff = 3
-        #self.nl = NeighborList([cutoff] * len(self), skin=0.3, self_interaction=True)
-        #self.nl.update(self)
-
-    def _update_graph_nodes(self):
-        for atom in self:
-            self.graph.add_node(atom.index, atom=atom)
-
-    def _update_graph_edges(self):
-        all_distances = self.get_all_distances(mic=True)
-        for node in self.graph.nodes:
-            indices, offsets = self.nl.get_neighbors(node)
-            distances = self.get_distances(node, indices)
-            print([self[i].number_valence_orbitals for i in indices])
-            bonds_ddsigma = np.exp(-distances)
-            bonds_ddpi = np.exp(-distances)
-            bonds_ddelta = np.exp(-distances)
-            self.graph.add_edges_from(
-                [(node, other, {'bond': bond}) for (other, bond) in zip(indices, bonds_ddsigma)]
-            )
-
-    #def __getitem__(self, i):
-    #    if isinstance(i, numbers.Integral):
-    #        natoms = len(self)
-    #        if i < -natoms or i >= natoms:
-    #            raise IndexError('Index out of range.')
-    #        return BOPAtom(atoms=self, index=i)
-    #    else:
-    #        return super().__getitem__(i)
 
 
 T = TypeVar('T')
