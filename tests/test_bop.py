@@ -4,15 +4,15 @@ from bop.atoms import *
 
 class TestBOPAtom(unittest.TestCase):
 
-    def test_init(self):
+    def test_init_explicit(self):
         bopatom = BOPAtom(Position((0, 0, 1)), AtomType('Fe'))
         self.assertTrue(bopatom.__class__ == BOPAtom)
 
-    def test_init2(self):
+    def test_init_implicit(self):
         bopatom = BOPAtom((0, 0, 1), 'Fe')
         self.assertTrue(bopatom.__class__ == BOPAtom)
 
-    def test_init3(self):
+    def test_init_with_valence(self):
         orbitals = {ValenceOrbitalType.S: ValenceOrbital(1.0, 1.0)}
         onsite_levels = {ValenceOrbitalType.S: 0.0}
         bopatom = BOPAtom(

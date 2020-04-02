@@ -13,4 +13,4 @@ install:
   - pip install -r requirements.txt
 
 script:
-  - python -m unittest tests/test_coordinate_system.py
+  - python -m unittest tests/test_*.py
