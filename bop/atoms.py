@@ -1,40 +1,55 @@
-import numpy as np
-import networkx as nx
 import itertools
 from enum import Enum
+from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, Hashable
+import numpy as np
+import networkx as nx
 from periodictable import elements
 from bop.coordinate_system import Position
-from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Callable
+
+
+class ValenceOrbitalType(Enum):
+    S = 1
+    P = 3
+    D = 5
+
+
+class ValenceOrbital:
+
+    def __init__(self,
+                 stoner_integral: float = None,
+                 charge_penalty: float = None):
+        self.stoner_integral = stoner_integral
+        self.charge_penalty = charge_penalty
 
 
 class AtomType:
+    """
+    The type of atom with element_name, number_valence_electrons, valence_orbital_dict and identifier (ident).
+    """
 
-    def __init__(self, element_name: str, ident: int = 0):
+    def __init__(self,
+                 element_name: str,
+                 number_valence_electrons: float = 10.0,
+                 valence_orbital_dict: Dict[ValenceOrbitalType, ValenceOrbital] = {},
+                 ident: int = 0
+                 ):
         if element_name not in (el.symbol for el in elements):
             raise ValueError(f"Initialized AtomType with undefined element_name {element_name}")
         self.element_name = element_name
+        self.number_valence_electrons = number_valence_electrons
+        self.valence_orbital_dict = valence_orbital_dict
         self.ident = ident
 
-    def __hash__(self):
-        return super().__hash__()
-
     def __eq__(self, other: 'AtomType'):
-        return self.element_name == other.element_name and self.ident == other.ident
+        return self.element_name == other.element_name \
+               and self.ident == other.ident \
+               and self.valence_orbital_dict == other.valence_orbital_dict
 
     def __ne__(self, other: 'AtomType'):
         return not self == other
 
     def __repr__(self):
         return f"{self.element_name}({self.ident})"
-
-
-class MolecularOrbital(Enum):
-    SS = 1
-    SP = 2
-    SD = 3
-    PP = 4
-    PD = 5
-    DD = 6
 
 
 class BondDefinitions:
@@ -61,18 +76,16 @@ class BOPAtom:
 
     def __init__(self,
                  position: Union[Position, Tuple[float, float, float]],
-                 atom_type: Union[AtomType, str]):
-        if atom_type is not AtomType:
-            atom_type = AtomType(atom_type)
-        self.atom_type = atom_type
+                 atom_type: Union[AtomType, str],
+                 onsite_levels: Dict[ValenceOrbitalType, float] = {}):
         if type(position) is not Position:
             position = Position(position)
         self.position = position
-        self.onsite_level = None
-        self.number_valence_orbitals = None
-        self.number_valence_electrons = None
-        self.stoner_integral = None
-        self.charge_penalty = None
+        if type(atom_type) is not AtomType:
+            atom_type = AtomType(atom_type)
+        self.atom_type = atom_type
+        if atom_type.valence_orbital_dict.keys() != onsite_levels.keys():
+            raise ValueError(f"Onsite levels {onsite_levels} do not match orbitals {atom_type.valence_orbital_dict}")
 
     def __repr__(self):
         return f"{self.atom_type} at {self.position}"
