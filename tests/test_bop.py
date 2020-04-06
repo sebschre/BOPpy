@@ -35,7 +35,7 @@ class TestBOPGraph(unittest.TestCase):
         self.a2 = BOPAtom(Position((0, 1, 0)), 'Fe')
         self.a3 = BOPAtom(Position((2, 1, 0)), 'Fe')
         self.a4 = BOPAtom(Position((2, 2, 0)), 'Fe')
-        self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4])
+        self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4], graph_calc=NxGraphCalculator())
 
     def test_distances(self):
         distances = list(self.bg._get_distances())
@@ -49,6 +49,10 @@ class TestBOPGraph(unittest.TestCase):
         self.bg.update_edges(cutoff=2)
         # nx.relabel.convert_node_labels_to_integers(self.G)
         # print(nx.dfs_tree(self.G, source=self.a1, depth_limit=3).edges())
+
+    def test_dls(self):
+        self.bg.update_edges(cutoff=2)
+        print(list(self.bg.graph_calc.depth_limited_search(self.a1, 2)))
 
 
 if __name__ == '__main__':

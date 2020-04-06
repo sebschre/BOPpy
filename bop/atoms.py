@@ -1,6 +1,8 @@
 import itertools
 from enum import Enum
-from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, Hashable
+from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, \
+    Hashable
+import collections
 from abc import ABC, abstractmethod
 import numpy as np
 import networkx as nx
@@ -126,6 +128,10 @@ class GraphCalculator(ABC):
     def remove_edge(self, node1, node2):
         pass
 
+    @abstractmethod
+    def depth_limited_search(self, node, depth: int):
+        pass
+
 
 class NxGraphCalculator(GraphCalculator):
 
@@ -152,13 +158,19 @@ class NxGraphCalculator(GraphCalculator):
     def remove_edge(self, node1, node2):
         return self.graph.remove_edge(node1, node2)
 
+    def depth_limited_search(self, node, depth: int):
+        if depth > 0:
+            for neighbor in self.graph.neighbors(node):  # TODO: this does not double count edges....
+                yield (node, neighbor)
+                yield from self.depth_limited_search(neighbor, depth - 1)
+
 
 class BOPGraph:
 
-    def __init__(self, atom_list: List[BOPAtom], graph_calc: GraphCalculator = NxGraphCalculator(),
-                 bond_definitions: BondDefinitions = None, **attr):
+    def __init__(self, atom_list: List[BOPAtom], graph_calc: GraphCalculator, bond_definitions: BondDefinitions = None,
+                 **attr):
         super().__init__(**attr)
-        self.graph_calc = graph_calc
+        self.graph_calc = graph_calc  # TODO: unexpected behavior if graph_calc was initialized before
         self.graph_calc.add_nodes_from(atom_list)
         self.bond_definitions = bond_definitions
         # nx.adjacency_matrix(self)**L
@@ -166,7 +178,8 @@ class BOPGraph:
     def update_edges(self, cutoff=3) -> None:
         for (pair, distance) in self._get_distances():
             if distance <= cutoff:
-                self.graph_calc.add_edge(*pair)
+                if not self.graph_calc.has_edge(*pair):
+                    self.graph_calc.add_edge(*pair)
             else:
                 if self.graph_calc.has_edge(*pair):
                     self.graph_calc.remove_edge(*pair)
