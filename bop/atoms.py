@@ -1,6 +1,7 @@
 import itertools
 from enum import Enum
 from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, Hashable
+from abc import ABC, abstractmethod
 import numpy as np
 import networkx as nx
 from periodictable import elements
@@ -8,12 +9,18 @@ from bop.coordinate_system import Position
 
 
 class ValenceOrbitalType(Enum):
+    """
+
+    """
     S = 1
     P = 3
     D = 5
 
 
-class ValenceOrbital:
+class ValenceOrbitalParameter:
+    """
+
+    """
 
     def __init__(self,
                  stoner_integral: float = None,
@@ -30,7 +37,7 @@ class AtomType:
     def __init__(self,
                  element_name: str,
                  number_valence_electrons: float = 10.0,
-                 valence_orbital_dict: Dict[ValenceOrbitalType, ValenceOrbital] = {},
+                 valence_orbital_dict: Dict[ValenceOrbitalType, ValenceOrbitalParameter] = {},
                  ident: int = 0
                  ):
         if element_name not in (el.symbol for el in elements):
@@ -91,33 +98,85 @@ class BOPAtom:
         return f"{self.atom_type} at {self.position}"
 
 
-class BOPGraph(nx.Graph):
+class GraphCalculator(ABC):
 
-    def __init__(self,
-                 atom_list: List[BOPAtom],
-                 bond_definitions: BondDefinitions = None):
-        super(BOPGraph, self).__init__()
-        self.add_nodes_from(atom_list)
+    @property
+    @abstractmethod
+    def nodes(self):
+        pass
+
+    @property
+    @abstractmethod
+    def edges(self):
+        pass
+
+    @abstractmethod
+    def add_nodes_from(self, node_list):
+        pass
+
+    @abstractmethod
+    def add_edge(self, node1, node2):
+        pass
+
+    @abstractmethod
+    def has_edge(self, node1, node2):
+        pass
+
+    @abstractmethod
+    def remove_edge(self, node1, node2):
+        pass
+
+
+class NxGraphCalculator(GraphCalculator):
+
+    def __init__(self):
+        self.graph = nx.Graph()
+
+    @property
+    def nodes(self):
+        return self.graph.nodes
+
+    @property
+    def edges(self):
+        return self.graph.edges
+
+    def add_nodes_from(self, node_list):
+        return self.graph.add_nodes_from(node_list)
+
+    def add_edge(self, node1, node2) -> None:
+        self.graph.add_edge(node1, node2)
+
+    def has_edge(self, node1, node2) -> bool:
+        return self.graph.has_edge(node1, node2)
+
+    def remove_edge(self, node1, node2):
+        return self.graph.remove_edge(node1, node2)
+
+
+class BOPGraph:
+
+    def __init__(self, atom_list: List[BOPAtom], graph_calc: GraphCalculator = NxGraphCalculator(),
+                 bond_definitions: BondDefinitions = None, **attr):
+        super().__init__(**attr)
+        self.graph_calc = graph_calc
+        self.graph_calc.add_nodes_from(atom_list)
         self.bond_definitions = bond_definitions
         # nx.adjacency_matrix(self)**L
-
-    def update_bond_definitions(self, bond_definitions: BondDefinitions) -> None:
-        self.bond_definitions = bond_definitions
 
     def update_edges(self, cutoff=3) -> None:
         for (pair, distance) in self._get_distances():
             if distance <= cutoff:
-                self.add_edge(*pair)
+                self.graph_calc.add_edge(*pair)
             else:
-                if self.has_edge(*pair):
-                    self.remove_edge(*pair)
+                if self.graph_calc.has_edge(*pair):
+                    self.graph_calc.remove_edge(*pair)
 
     def _get_distances(self) -> Iterator[Tuple[Tuple[BOPAtom, BOPAtom], float]]:
         """
         TODO: return pairs only once
         :return:
         """
-        for pair in circular_pairwise(self.nodes):
+        for pair in circular_pairwise(self.graph_calc.nodes):
             yield (pair, pair[0].position.get_distance(pair[1].position))
 
 
