@@ -1,7 +1,7 @@
 import itertools
 from enum import Enum
 from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, \
-    Hashable
+    Hashable, Generator
 import collections
 from abc import ABC, abstractmethod
 import numpy as np
@@ -149,6 +149,18 @@ class GraphCalculator(ABC):
                     yield from __recursion(neighbor, depth_remaining - 1)
 
         return __recursion(initial_node, depth)
+
+    def all_paths(self, initial_node: BOPAtom, depth: int):
+        path = [None] * depth
+        for level, edge in self.depth_limited_search(initial_node, depth=depth):
+            path[level-1] = edge
+            if level == depth:
+                yield path
+
+    def all_paths_from_to(self, initial_node, final_node, depth: int):
+        for path in self.all_paths(initial_node=initial_node, depth=depth):
+            if path[-1][-1] == final_node:
+                yield path
 
 
 class NxGraphCalculator(GraphCalculator):

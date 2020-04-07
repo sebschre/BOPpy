@@ -55,6 +55,18 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
         for n in self.bg._graph_calc.depth_limited_search(self.a1, 3):
             print(n)
 
+    def test_all_paths(self):
+        print("Testing all paths")
+        self.bg.update_edges(cutoff=2)
+        for path in self.bg._graph_calc.all_paths(self.a1, 3):
+            print(path)
+
+    def test_all_paths_from_to(self):
+        print("Testing all paths from to")
+        self.bg.update_edges(cutoff=2)
+        for path in self.bg._graph_calc.all_paths_from_to(self.a1, self.a1, 3):
+            print(path)
+
 
 class TestBOPGraphWithIGraph(unittest.TestCase):
     """
@@ -83,6 +95,11 @@ class TestBOPGraphWithIGraph(unittest.TestCase):
     def test_dls(self):
         self.bg.update_edges(cutoff=2)
         for n in self.bg._graph_calc.depth_limited_search(self.a1, 3):
+            pass
+
+    def test_all_paths(self):
+        self.bg.update_edges(cutoff=2)
+        for path in self.bg._graph_calc.all_paths(self.a1, 3):
             pass
 
 
