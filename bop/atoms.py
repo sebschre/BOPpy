@@ -158,11 +158,21 @@ class NxGraphCalculator(GraphCalculator):
     def remove_edge(self, node1, node2):
         return self.graph.remove_edge(node1, node2)
 
-    def depth_limited_search(self, node, depth: int):
-        if depth > 0:
-            for neighbor in self.graph.neighbors(node):  # TODO: this does not double count edges....
-                yield (node, neighbor)
-                yield from self.depth_limited_search(neighbor, depth - 1)
+    def depth_limited_search(self, initial_node, depth: int):
+        max_depth = depth
+
+        def __recursion(node, depth_remaining: int, self_counting=True):
+            nonlocal max_depth
+            level = max_depth - depth_remaining + 1
+            if depth_remaining > 0:
+                if self_counting:
+                    # TODO: is this necessary if (node, node) is an edge?
+                    yield (level, (node, node))
+                    yield from __recursion(node, depth_remaining - 1)
+                for neighbor in self.graph.neighbors(node):
+                    yield (level, (node, neighbor))  # TODO: yield edge?
+                    yield from __recursion(neighbor, depth_remaining - 1)
+        return __recursion(initial_node, depth)
 
 
 class BOPGraph:

@@ -52,7 +52,8 @@ class TestBOPGraph(unittest.TestCase):
 
     def test_dls(self):
         self.bg.update_edges(cutoff=2)
-        print(list(self.bg.graph_calc.depth_limited_search(self.a1, 2)))
+        for n in self.bg.graph_calc.depth_limited_search(self.a1, 3):
+            print(n)
 
 
 if __name__ == '__main__':
