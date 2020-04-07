@@ -3,4 +3,6 @@ networkx==2.4
 numpy==1.18.1
 periodictable==1.5.2
 pyparsing==2.4.6
+python-igraph==0.8.0
 scipy==1.4.1
+texttable==1.6.2
