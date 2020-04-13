@@ -246,12 +246,12 @@ class NxGraphCalculator(GraphCalculator):
         def __recursion(node_from, depth_level, path):
             for _, node_to, depth in tree_full.out_edges(node_from, keys=True):
                 if depth == depth_level:
-                    path_current = copy.deepcopy(path)  # TODO: high time and space complexity, find better solution
-                    path_current.add_edge(node_from, node_to, depth_level)
+                    path.add_edge(node_from, node_to, depth_level)
                     if depth_level == depth_limit:
-                        yield path_current
+                        yield path
                     else:
-                        yield from __recursion(node_to, depth_level + 1, path_current)
+                        yield from __recursion(node_to, depth_level + 1, path)
+                    path.remove_edge(node_from, node_to, depth_level)
 
         yield from __recursion(from_node, 1, nx.MultiDiGraph())
 

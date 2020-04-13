@@ -60,7 +60,7 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
 
     def test_all_paths_from_to(self):
         self.bg.update_edges(cutoff=2)
-        for path in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, depth_limit=5):
+        for path in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, depth_limit=6):
             pass
 
 
