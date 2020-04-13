@@ -75,3 +75,10 @@ class Position:
 
     def get_distance(self, other: 'Position') -> float:
         return np.sqrt(np.sum((self.pos_global - other.pos_global)**2))
+
+
+class PBCPosition(Position):
+    """
+    Position class that considers periodic boundary conditions
+    """
+    pass

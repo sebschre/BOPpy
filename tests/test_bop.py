@@ -1,4 +1,5 @@
 import unittest
+import time
 from bop.atoms import *
 
 
@@ -31,11 +32,16 @@ class TestBOPAtom(unittest.TestCase):
 class TestBOPGraphWithNxGraph(unittest.TestCase):
 
     def setUp(self):
+        self.startTime = time.time()
         self.a1 = BOPAtom(Position((0, 0, 1)), 'Fe')
         self.a2 = BOPAtom(Position((0, 1, 0)), 'Fe')
         self.a3 = BOPAtom(Position((2, 1, 0)), 'Fe')
         self.a4 = BOPAtom(Position((2, 2, 0)), 'Fe')
         self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4], graph_calc=NxGraphCalculator())
+
+    def tearDown(self):
+        t = time.time() - self.startTime
+        print(f"{self.id()}: \t{t:.4f}s")
 
     def test_distances(self):
         distances = list(self.bg._get_distances())
@@ -60,8 +66,12 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
 
     def test_all_paths_from_to(self):
         self.bg.update_edges(cutoff=2)
-        for path in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, depth_limit=6):
-            pass
+        for path in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, depth_limit=4):
+            print(path.edges(data=True))
+
+    def test_connection_graph(self):
+        self.bg.update_edges(cutoff=2)
+        self.bg._graph_calc._connection_graph_from_to(self.a1, self.a2, depth_limit=6)
 
 
 class TestBOPGraphWithIGraph(unittest.TestCase):
@@ -100,4 +110,8 @@ class TestBOPGraphWithIGraph(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    suite_nxgraph = unittest.TestLoader().loadTestsFromTestCase(TestBOPGraphWithNxGraph)
+    suite_bopatoms = unittest.TestLoader().loadTestsFromTestCase(TestBOPAtom)
+    unittest.TextTestRunner(verbosity=0).run(suite_nxgraph)
+    unittest.TextTestRunner(verbosity=0).run(suite_bopatoms)
     unittest.main()

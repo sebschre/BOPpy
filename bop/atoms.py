@@ -12,6 +12,9 @@ from periodictable import elements
 from bop.coordinate_system import Position
 
 
+T = TypeVar('T')
+
+
 class ValenceOrbitalType(Enum):
     """
 
@@ -129,7 +132,7 @@ class GraphCalculator(ABC):
         pass
 
     @abstractmethod
-    def add_edge(self, node1: BOPAtom, node2: BOPAtom) -> None:
+    def add_edge(self, node1: BOPAtom, node2: BOPAtom, **attr) -> None:
         pass
 
     @abstractmethod
@@ -148,7 +151,7 @@ class GraphCalculator(ABC):
     def _neighbors(self, node: BOPAtom) -> List[BOPAtom]:
         pass
 
-    def depth_limited_search(self, initial_node: BOPAtom, depth: int):
+    def depth_limited_search(self, initial_node: BOPAtom, depth: int) -> Iterator[Tuple[BOPAtom, BOPAtom, int]]:
         max_depth = depth
 
         def __recursion(node, depth_remaining: int):
@@ -192,11 +195,8 @@ class NxGraphCalculator(GraphCalculator):
     def add_nodes_from(self, node_list: List[BOPAtom]) -> None:
         return self.__graph.add_nodes_from(node_list)
 
-    def add_edge(self, node1: BOPAtom, node2: BOPAtom) -> None:
-        if node1 == node2:
-            self.__graph.add_edge(node1, node2, hop=node1.onsite_levels)  # TODO: hop should be sparse diagonal matrix
-        else:
-            self.__graph.add_edge(node1, node2)
+    def add_edge(self, node1: BOPAtom, node2: BOPAtom, **attr) -> None:
+        self.__graph.add_edge(node1, node2, **attr)
 
     def _dfs_multi_edge_tree(self, source=None, depth_limit=None, reverse_count_from: int = None) -> nx.MultiDiGraph:
         """
@@ -231,16 +231,28 @@ class NxGraphCalculator(GraphCalculator):
     def _neighbors(self, node: BOPAtom) -> List[BOPAtom]:
         return self.__graph.neighbors(node)
 
-    def _connection_graph_from_to(self, from_node: BOPAtom, to_node: BOPAtom, depth: int) -> nx.MultiDiGraph:
-        if depth % 2 == 0:
-            depth1, depth2 = int(depth/2), int(depth/2)
+    def _connection_trees_from_to(
+            self, from_node: BOPAtom, to_node: BOPAtom, depth_limit: int) -> Tuple[nx.MultiDiGraph, nx.MultiDiGraph]:
+        if depth_limit % 2 == 0:
+            depth1, depth2 = int(depth_limit / 2), int(depth_limit / 2)
         else:
-            depth1, depth2 = int((depth+1)/2), int((depth-1)/2)
+            depth1, depth2 = int((depth_limit + 1) / 2), int((depth_limit - 1) / 2)
         tree1 = self._dfs_multi_edge_tree(from_node, depth_limit=depth1)
-        tree2 = self._dfs_multi_edge_tree(to_node, depth_limit=depth2, reverse_count_from=depth)
+        tree2 = self._dfs_multi_edge_tree(to_node, depth_limit=depth2, reverse_count_from=depth_limit)
+        return tree1, tree2
+
+    def _connection_graph_from_to(self, from_node: BOPAtom, to_node: BOPAtom, depth_limit: int) -> nx.MultiDiGraph:
+        (tree1, tree2) = self._connection_trees_from_to(from_node, to_node, depth_limit)
         return nx.compose(tree1, tree2)
 
     def all_paths_from_to(self, from_node: BOPAtom, to_node: BOPAtom, depth_limit: int):
+        """
+        TODO: come up with more performant solution
+        :param from_node:
+        :param to_node:
+        :param depth_limit:
+        :return:
+        """
         tree_full = self._connection_graph_from_to(from_node, to_node, depth_limit)
 
         def __recursion(node_from, depth_level, path):
@@ -282,7 +294,7 @@ class IGraphCalculator(GraphCalculator):
     def add_nodes_from(self, node_list: List[BOPAtom]) -> None:
         self.__graph.add_vertices(node_list)
 
-    def add_edge(self, node1: BOPAtom, node2: BOPAtom) -> None:
+    def add_edge(self, node1: BOPAtom, node2: BOPAtom, **attr) -> None:
         v = [self.__bopatom_to_vertex(x) for x in (node1, node2)]
         self.__graph.add_edge(*v)
 
@@ -320,7 +332,7 @@ class BOPGraph:
         for (pair, distance) in self._get_distances():
             if distance <= cutoff:
                 if not self._graph_calc.has_edge(*pair):
-                    self._graph_calc.add_edge(*pair)
+                    self._graph_calc.add_edge(*pair, distance=distance, phi=0)  # TODO: add orientation angle
             else:
                 if self._graph_calc.has_edge(*pair):
                     self._graph_calc.remove_edge(*pair)
@@ -334,10 +346,7 @@ class BOPGraph:
             yield (pair, pair[0].position.get_distance(pair[1].position))
 
 
-T = TypeVar('T')
-
-
-def circular_pairwise(it: Iterator[T]) -> Iterator[Tuple[T, T]]:
+def circular_pairwise(it: Iterable[T]) -> Iterator[Tuple[T, T]]:
     """
     https://stackoverflow.com/a/36918890/573256
     :return:
