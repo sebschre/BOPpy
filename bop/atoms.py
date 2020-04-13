@@ -1,4 +1,5 @@
 import itertools
+import copy
 from enum import Enum
 from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, \
     Hashable, Generator
@@ -84,10 +85,14 @@ class BondDefinitions:
 
 class BOPAtom:
 
+    atom_number = 0
+
     def __init__(self,
                  position: Union[Position, Tuple[float, float, float]],
                  atom_type: Union[AtomType, str],
                  onsite_levels: Dict[ValenceOrbitalType, float] = {}):
+        BOPAtom.atom_number += 1
+        self.atom_id = BOPAtom.atom_number
         if type(position) is not Position:
             position = Position(position)
         self.position = position
@@ -96,9 +101,15 @@ class BOPAtom:
         self.atom_type = atom_type
         if atom_type.valence_orbital_dict.keys() != onsite_levels.keys():
             raise ValueError(f"Onsite levels {onsite_levels} do not match orbitals {atom_type.valence_orbital_dict}")
+        else:
+            self.onsite_levels = onsite_levels
+
+    def __del__(self):
+        BOPAtom.atom_number -= 1
 
     def __repr__(self):
-        return f"{self.atom_type} at {self.position}"
+        # return f"{self.atom_type} at {self.position}"
+        return f"Atom {self.atom_id}"
 
 
 class GraphCalculator(ABC):
@@ -122,6 +133,10 @@ class GraphCalculator(ABC):
         pass
 
     @abstractmethod
+    def get_edge(self, node1: BOPAtom, node2: BOPAtom):
+        pass
+
+    @abstractmethod
     def has_edge(self, node1: BOPAtom, node2: BOPAtom) -> bool:
         pass
 
@@ -133,22 +148,18 @@ class GraphCalculator(ABC):
     def _neighbors(self, node: BOPAtom) -> List[BOPAtom]:
         pass
 
-    def depth_limited_search(self, initial_node: BOPAtom, depth: int, self_counting=True):
+    def depth_limited_search(self, initial_node: BOPAtom, depth: int):
         max_depth = depth
 
-        def __recursion(node, depth_remaining: int, sc=self_counting):
+        def __recursion(node, depth_remaining: int):
             nonlocal max_depth
             level = max_depth - depth_remaining + 1
             if depth_remaining > 0:
-                if sc:
-                    # TODO: is this necessary if (node, node) is an edge?
-                    yield (level, (node, node))
-                    yield from __recursion(node, depth_remaining - 1)
                 for neighbor in self._neighbors(node):
-                    yield (level, (node, neighbor))  # TODO: yield edge?
+                    yield (node, neighbor, level)
                     yield from __recursion(neighbor, depth_remaining - 1)
 
-        return __recursion(initial_node, depth)
+        yield from __recursion(initial_node, depth)
 
     def all_paths(self, initial_node: BOPAtom, depth: int):
         path = [None] * depth
@@ -157,10 +168,12 @@ class GraphCalculator(ABC):
             if level == depth:
                 yield path
 
-    def all_paths_from_to(self, initial_node, final_node, depth: int):
-        for path in self.all_paths(initial_node=initial_node, depth=depth):
-            if path[-1][-1] == final_node:
-                yield path
+    @abstractmethod
+    def all_paths_from_to(self, from_node: BOPAtom, to_node: BOPAtom, depth_limit: int):
+        pass
+        # for path in self.all_paths(initial_node=initial_node, depth=depth):
+        #     if path[-1][-1] == final_node:
+        #         yield path
 
 
 class NxGraphCalculator(GraphCalculator):
@@ -180,7 +193,34 @@ class NxGraphCalculator(GraphCalculator):
         return self.__graph.add_nodes_from(node_list)
 
     def add_edge(self, node1: BOPAtom, node2: BOPAtom) -> None:
-        self.__graph.add_edge(node1, node2)
+        if node1 == node2:
+            self.__graph.add_edge(node1, node2, hop=node1.onsite_levels)  # TODO: hop should be sparse diagonal matrix
+        else:
+            self.__graph.add_edge(node1, node2)
+
+    def _dfs_multi_edge_tree(self, source=None, depth_limit=None, reverse_count_from: int = None) -> nx.MultiDiGraph:
+        """
+        TODO: find nicer solution than reverse_count_from
+        :param source:
+        :param depth_limit:
+        :param reverse_count_from:
+        :return:
+        """
+        tree = nx.MultiDiGraph()
+        if source is None:
+            tree.add_nodes_from(self.__graph)
+        else:
+            tree.add_node(source)
+        if reverse_count_from:
+            tree.add_edges_from(
+                (n2, n1, reverse_count_from - x + 1) for (n1, n2, x) in self.depth_limited_search(source, depth_limit)
+            )
+        else:
+            tree.add_edges_from(self.depth_limited_search(source, depth_limit))
+        return tree
+
+    def get_edge(self, node1: BOPAtom, node2: BOPAtom):
+        return self.__graph.edges([node1, node2])
 
     def has_edge(self, node1: BOPAtom, node2: BOPAtom) -> bool:
         return self.__graph.has_edge(node1, node2)
@@ -190,6 +230,30 @@ class NxGraphCalculator(GraphCalculator):
 
     def _neighbors(self, node: BOPAtom) -> List[BOPAtom]:
         return self.__graph.neighbors(node)
+
+    def _connection_graph_from_to(self, from_node: BOPAtom, to_node: BOPAtom, depth: int) -> nx.MultiDiGraph:
+        if depth % 2 == 0:
+            depth1, depth2 = int(depth/2), int(depth/2)
+        else:
+            depth1, depth2 = int((depth+1)/2), int((depth-1)/2)
+        tree1 = self._dfs_multi_edge_tree(from_node, depth_limit=depth1)
+        tree2 = self._dfs_multi_edge_tree(to_node, depth_limit=depth2, reverse_count_from=depth)
+        return nx.compose(tree1, tree2)
+
+    def all_paths_from_to(self, from_node: BOPAtom, to_node: BOPAtom, depth_limit: int):
+        tree_full = self._connection_graph_from_to(from_node, to_node, depth_limit)
+
+        def __recursion(node_from, depth_level, path):
+            for _, node_to, depth in tree_full.out_edges(node_from, keys=True):
+                if depth == depth_level:
+                    path_current = copy.deepcopy(path)  # TODO: high time and space complexity, find better solution
+                    path_current.add_edge(node_from, node_to, depth_level)
+                    if depth_level == depth_limit:
+                        yield path_current
+                    else:
+                        yield from __recursion(node_to, depth_level + 1, path_current)
+
+        yield from __recursion(from_node, 1, nx.MultiDiGraph())
 
 
 class IGraphCalculator(GraphCalculator):
@@ -204,6 +268,9 @@ class IGraphCalculator(GraphCalculator):
     @property
     def edges(self):
         return self.__graph.get_edgelist()
+
+    def get_edge(self, node1: BOPAtom, node2: BOPAtom):
+        pass
 
     def __bopatom_to_vertex(self, node: BOPAtom) -> igr.Vertex:
         vertices = [v for v in self.__graph.vs if v['name'] == node]
@@ -234,18 +301,22 @@ class IGraphCalculator(GraphCalculator):
         neighbor_nodes = self.__graph.vs[neighbor_indices]["name"]
         return neighbor_nodes
 
+    def all_paths_from_to(self, initial_node: BOPAtom, final_node: BOPAtom, depth: int):
+        pass
+
 
 class BOPGraph:
 
-    def __init__(self, atom_list: List[BOPAtom], graph_calc: GraphCalculator, bond_definitions: BondDefinitions = None,
-                 **attr):
-        super().__init__(**attr)
+    def __init__(self, atom_list: List[BOPAtom], graph_calc: GraphCalculator, bond_definitions: BondDefinitions = None):
         self._graph_calc = graph_calc  # TODO: unexpected behavior if graph_calc was initialized before
         self._graph_calc.add_nodes_from(atom_list)
         self.bond_definitions = bond_definitions
         # nx.adjacency_matrix(self)**L
 
     def update_edges(self, cutoff=3) -> None:
+        for atom in self._graph_calc.nodes:
+            if not self._graph_calc.has_edge(atom, atom):
+                self._graph_calc.add_edge(atom, atom)
         for (pair, distance) in self._get_distances():
             if distance <= cutoff:
                 if not self._graph_calc.has_edge(*pair):
