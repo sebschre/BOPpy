@@ -1,6 +1,9 @@
 import unittest
 import time
-from bop.atoms import *
+import numpy as np
+from bop.atoms import BOPAtom, ValenceOrbitalParameter, ValenceOrbitalType, AtomType
+from bop.coordinate_system import Position
+from bop.graph_calculator import GraphCalculator, NxGraphCalculator, IGraphCalculator, BOPGraph
 
 
 class TestBOPAtom(unittest.TestCase):
