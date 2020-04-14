@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, Hashable, Generator, Optional
 import itertools
 import numpy as np
+import scipy
 import networkx as nx
 import igraph as igr
 
@@ -105,11 +106,15 @@ class NxGraphCalculator(GraphCalculator):
         else:
             tree.add_node(source)
         if reverse_count_from:
-            tree.add_edges_from(
-                (n2, n1, reverse_count_from - x + 1) for (n1, n2, x) in self.depth_limited_search(source, depth_limit)
-            )
+            for node1, node2, depth in self.depth_limited_search(source, depth_limit):
+                tree.add_edge(node2, node1, reverse_count_from - depth + 1, **self.edges[node1, node2])
+            #tree.add_edges_from(
+            #    (n2, n1, reverse_count_from - x + 1) for (n1, n2, x) in self.depth_limited_search(source, depth_limit)
+            #)
         else:
-            tree.add_edges_from(self.depth_limited_search(source, depth_limit))
+            for node1, node2, depth in self.depth_limited_search(source, depth_limit):
+                tree.add_edge(node1, node2, depth, **self.edges[node1, node2])
+            #tree.add_edges_from(self.depth_limited_search(source, depth_limit))
         return tree
 
     def get_edge(self, node1: Node, node2: Node):
@@ -151,7 +156,7 @@ class NxGraphCalculator(GraphCalculator):
         def __recursion(node_from, depth_level, path):
             for _, node_to, depth in tree_full.out_edges(node_from, keys=True):
                 if depth == depth_level:
-                    path.add_edge(node_from, node_to, depth_level)
+                    path.add_edge(node_from, node_to, depth_level, **self.edges[node_from, node_to])
                     if depth_level == depth_limit:
                         yield path
                     else:
@@ -178,7 +183,7 @@ class IGraphCalculator(GraphCalculator):
         pass
 
     def __node_to_vertex(self, node: Node) -> igr.Vertex:
-        vertices = [v for v in self.__graph.vs if v['name'] == node]
+        vertices = [v for v in self.__graph.vs() if v['name'] == node]
         if vertices:
             return vertices[0]
         else:
@@ -203,7 +208,7 @@ class IGraphCalculator(GraphCalculator):
     def _neighbors(self, node: Node):
         vertex = self.__node_to_vertex(node)
         neighbor_indices = self.__graph.neighbors(vertex)
-        neighbor_nodes = self.__graph.vs[neighbor_indices]["name"]
+        neighbor_nodes = self.__graph.vs()[neighbor_indices]["name"]
         return neighbor_nodes
 
     def all_paths_from_to(self, initial_node: Node, final_node: Node, depth: int):
@@ -212,19 +217,24 @@ class IGraphCalculator(GraphCalculator):
 
 class BOPGraph:
 
-    def __init__(self, atom_list: List[Node], graph_calc: GraphCalculator, node_interaction_calc: Optional[Callable[[Node, Node], float]] = None):
+    def __init__(self, node_list: List[Node], graph_calc: GraphCalculator, node_interaction_calc: Optional[Callable[[Node, Node], scipy.sparse.spmatrix]] = None):
         self._graph_calc = graph_calc  # TODO: unexpected behavior if graph_calc was initialized before
-        self._graph_calc.add_nodes_from(atom_list)
+        self._graph_calc.add_nodes_from(node_list)
+        self.node_interaction_calc = node_interaction_calc
         # nx.adjacency_matrix(self)**L
 
     def update_edges(self, cutoff=3) -> None:
-        for atom in self._graph_calc.nodes:
-            if not self._graph_calc.has_edge(atom, atom):
-                self._graph_calc.add_edge(atom, atom)
+        for node in self._graph_calc.nodes:
+            if not self._graph_calc.has_edge(node, node):
+                self._graph_calc.add_edge(
+                    node, node, distance=0, phi=0, hop=self.node_interaction_calc
+                    )
         for (pair, distance) in self._get_distances():
             if distance <= cutoff:
                 if not self._graph_calc.has_edge(*pair):
-                    self._graph_calc.add_edge(*pair, distance=distance, phi=0)  # TODO: add orientation angle
+                    self._graph_calc.add_edge(
+                        *pair, distance=distance, phi=0, hop=self.node_interaction_calc
+                        )  # TODO: add orientation angle
             else:
                 if self._graph_calc.has_edge(*pair):
                     self._graph_calc.remove_edge(*pair)
