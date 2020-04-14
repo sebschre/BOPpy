@@ -1,4 +1,4 @@
-from .atoms import BOPAtoms, BOPAtom
+from atoms import BOPAtoms, BOPAtom
 from scipy.spatial.transform import Rotation
 from abc import ABCMeta
 from typing import Tuple, Callable
