@@ -6,6 +6,7 @@ class CoordinateSystem:
     """
     The coordinate system
     """
+
     def __init__(self,
                  axes: Tuple[
                      Tuple[float, float, float],
@@ -15,10 +16,9 @@ class CoordinateSystem:
         """
         :param axes:
         """
-        if np.linalg.det(axes) != 0:
-            self.axes = np.array(axes)
-        else:
+        if np.linalg.det(axes) == 0:
             raise ValueError("has to be invertible")
+        self.axes = np.array(axes)
 
     def __hash__(self):
         return super().__hash__()
@@ -54,7 +54,8 @@ class Position:
 
     @pos_global.setter
     def pos_global(self, value: Tuple[float, float, float]):
-        self.pos_frac = np.dot(np.linalg.inv(self.coordinate_system.axes), value)
+        self.pos_frac = np.dot(np.linalg.inv(
+            self.coordinate_system.axes), value)
 
     def __repr__(self):
         return f"{self.pos_global}"

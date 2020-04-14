@@ -29,7 +29,8 @@ class TestBOPAtom(unittest.TestCase):
         orbitals = {ValenceOrbitalType.S: ValenceOrbitalParameter(1.0, 1.0)}
         onsite_levels = {ValenceOrbitalType.D: 0.0}
         with self.assertRaises(ValueError):
-            BOPAtom(Position((0, 0, 1)), AtomType('Fe', valence_orbital_dict=orbitals), onsite_levels=onsite_levels)
+            BOPAtom(Position((0, 0, 1)), AtomType(
+                'Fe', valence_orbital_dict=orbitals), onsite_levels=onsite_levels)
 
 
 class TestBOPGraphWithNxGraph(unittest.TestCase):
@@ -40,7 +41,8 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
         self.a2 = BOPAtom(Position((0, 1, 0)), 'Fe')
         self.a3 = BOPAtom(Position((2, 1, 0)), 'Fe')
         self.a4 = BOPAtom(Position((2, 2, 0)), 'Fe')
-        self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4], graph_calc=NxGraphCalculator())
+        self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4],
+                           graph_calc=NxGraphCalculator())
 
     def tearDown(self):
         t = time.time() - self.startTime
@@ -61,11 +63,13 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
 
     def test_all_paths_from_to_1(self):
         self.bg.update_edges(cutoff=2)
-        self.assertIs(len(list(self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, depth_limit=2))), 2)
+        self.assertIs(len(list(self.bg._graph_calc.all_paths_from_to(
+            self.a1, self.a2, depth_limit=2))), 2)
 
     def test_all_paths_from_to_2(self):
         self.bg.update_edges(cutoff=2)
-        self.assertIs(len(list(self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, depth_limit=3))), 5)
+        self.assertIs(len(list(self.bg._graph_calc.all_paths_from_to(
+            self.a1, self.a2, depth_limit=3))), 5)
 
     def test_all_paths_from_to(self):
         self.bg.update_edges(cutoff=2)
@@ -74,19 +78,22 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
 
     def test_connection_graph(self):
         self.bg.update_edges(cutoff=2)
-        self.bg._graph_calc._connection_graph_from_to(self.a1, self.a2, depth_limit=6)
+        self.bg._graph_calc._connection_graph_from_to(
+            self.a1, self.a2, depth_limit=6)
 
 
 class TestBOPGraphWithIGraph(unittest.TestCase):
     """
     TODO: merge testing with different graph calculators
     """
+
     def setUp(self):
         self.a1 = BOPAtom(Position((0, 0, 1)), 'Fe')
         self.a2 = BOPAtom(Position((0, 1, 0)), 'Fe')
         self.a3 = BOPAtom(Position((2, 1, 0)), 'Fe')
         self.a4 = BOPAtom(Position((2, 2, 0)), 'Fe')
-        self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4], graph_calc=IGraphCalculator())
+        self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4],
+                           graph_calc=IGraphCalculator())
 
     def test_distances(self):
         distances = list(self.bg._get_distances())
@@ -101,12 +108,12 @@ class TestBOPGraphWithIGraph(unittest.TestCase):
         # nx.relabel.convert_node_labels_to_integers(self.G)
         # print(nx.dfs_tree(self.G, source=self.a1, depth_limit=3).edges())
 
-    #def test_dls(self):
+    # def test_dls(self):
     #    self.bg.update_edges(cutoff=2)
     #    for n in self.bg._graph_calc.depth_limited_search(self.a1, 3):
     #        pass
 
-    #def test_all_paths(self):
+    # def test_all_paths(self):
     #    self.bg.update_edges(cutoff=2)
     #    for path in self.bg._graph_calc.all_paths(self.a1, 3):
     #        pass

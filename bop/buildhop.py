@@ -8,11 +8,11 @@ import numpy as np
 class TwoCenterHoppingIntegrals:
     def __init__(self, bopatoms: BOPAtoms, cutoffs: list, **kwargs):
         self.bopatoms = bopatoms
-        #self.nl = NeighborList(cutoffs=cutoffs,
+        # self.nl = NeighborList(cutoffs=cutoffs,
         #                       bothways=True,
         #                       self_interaction=False,
         #                       **kwargs)
-        #self.nl.update(bopatoms)
+        # self.nl.update(bopatoms)
 
     def update_hops(self):
         raise NotImplementedError
@@ -244,7 +244,7 @@ class BOPModel:
                  dd: ConcreteDDBond = None,
                  pp=None,
                  ss=None,
-                 repulsive: Repulsive=None):
+                 repulsive: Repulsive = None):
 
         self.dd = dd
         self.pp = pp

@@ -44,7 +44,8 @@ class AtomType:
                  ident: int = 0
                  ):
         if element_name not in (el.symbol for el in elements):
-            raise ValueError(f"Initialized AtomType with undefined element_name {element_name}")
+            raise ValueError(
+                f"Initialized AtomType with undefined element_name {element_name}")
         self.element_name = element_name
         self.number_valence_electrons = number_valence_electrons
         self.valence_orbital_dict = valence_orbital_dict
@@ -52,8 +53,8 @@ class AtomType:
 
     def __eq__(self, other: 'AtomType'):
         return self.element_name == other.element_name \
-               and self.ident == other.ident \
-               and self.valence_orbital_dict == other.valence_orbital_dict
+            and self.ident == other.ident \
+            and self.valence_orbital_dict == other.valence_orbital_dict
 
     def __ne__(self, other: 'AtomType'):
         return not self == other
@@ -78,7 +79,8 @@ class BondDefinitions:
         :return:
         """
         if atom_type1 not in self.atom_types or atom_type2 not in self.atom_types:
-            raise ValueError(f"atom type {atom_type1} or {atom_type2} not in BondDefinitions")
+            raise ValueError(
+                f"atom type {atom_type1} or {atom_type2} not in BondDefinitions")
         return lambda x: np.exp(-x)
 
 
@@ -99,7 +101,8 @@ class BOPAtom(Node):
             atom_type = AtomType(atom_type)
         self.atom_type = atom_type
         if atom_type.valence_orbital_dict.keys() != onsite_levels.keys():
-            raise ValueError(f"Onsite levels {onsite_levels} do not match orbitals {atom_type.valence_orbital_dict}")
+            raise ValueError(
+                f"Onsite levels {onsite_levels} do not match orbitals {atom_type.valence_orbital_dict}")
         else:
             self.onsite_levels = onsite_levels
 
@@ -109,6 +112,6 @@ class BOPAtom(Node):
     def __repr__(self):
         # return f"{self.atom_type} at {self.position}"
         return f"Atom {self.atom_id}"
-    
+
     def get_distance(self, other: 'BOPAtom') -> float:
         return self.position.get_distance(other.position)

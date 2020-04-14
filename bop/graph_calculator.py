@@ -8,7 +8,7 @@ import igraph as igr
 
 
 class Node(ABC):
-    
+
     @abstractmethod
     def get_distance(self, other: 'Node'):
         pass
@@ -48,6 +48,7 @@ class GraphCalculator(ABC):
 
     def depth_limited_search(self, initial_node: Node, depth: int) -> Iterator[Tuple[Node, Node, int]]:
         max_depth = depth
+
         def __recursion(node, depth_remaining: int):
             nonlocal max_depth
             level = max_depth - depth_remaining + 1
@@ -56,7 +57,6 @@ class GraphCalculator(ABC):
                     yield (node, neighbor, level)
                     yield from __recursion(neighbor, depth_remaining - 1)
         yield from __recursion(initial_node, depth)
-        
 
     def all_paths(self, initial_node: Node, depth: int):
         path = [None] * depth
@@ -107,14 +107,11 @@ class NxGraphCalculator(GraphCalculator):
             tree.add_node(source)
         if reverse_count_from:
             for node1, node2, depth in self.depth_limited_search(source, depth_limit):
-                tree.add_edge(node2, node1, reverse_count_from - depth + 1, **self.edges[node1, node2])
-            #tree.add_edges_from(
-            #    (n2, n1, reverse_count_from - x + 1) for (n1, n2, x) in self.depth_limited_search(source, depth_limit)
-            #)
+                tree.add_edge(node2, node1, reverse_count_from -
+                              depth + 1, **self.edges[node1, node2])
         else:
             for node1, node2, depth in self.depth_limited_search(source, depth_limit):
                 tree.add_edge(node1, node2, depth, **self.edges[node1, node2])
-            #tree.add_edges_from(self.depth_limited_search(source, depth_limit))
         return tree
 
     def get_edge(self, node1: Node, node2: Node):
@@ -134,13 +131,16 @@ class NxGraphCalculator(GraphCalculator):
         if depth_limit % 2 == 0:
             depth1, depth2 = int(depth_limit / 2), int(depth_limit / 2)
         else:
-            depth1, depth2 = int((depth_limit + 1) / 2), int((depth_limit - 1) / 2)
+            depth1, depth2 = int((depth_limit + 1) /
+                                 2), int((depth_limit - 1) / 2)
         tree1 = self._dfs_multi_edge_tree(from_node, depth_limit=depth1)
-        tree2 = self._dfs_multi_edge_tree(to_node, depth_limit=depth2, reverse_count_from=depth_limit)
+        tree2 = self._dfs_multi_edge_tree(
+            to_node, depth_limit=depth2, reverse_count_from=depth_limit)
         return tree1, tree2
 
     def _connection_graph_from_to(self, from_node: Node, to_node: Node, depth_limit: int) -> nx.MultiDiGraph:
-        (tree1, tree2) = self._connection_trees_from_to(from_node, to_node, depth_limit)
+        (tree1, tree2) = self._connection_trees_from_to(
+            from_node, to_node, depth_limit)
         return nx.compose(tree1, tree2)
 
     def all_paths_from_to(self, from_node: Node, to_node: Node, depth_limit: int):
@@ -151,12 +151,14 @@ class NxGraphCalculator(GraphCalculator):
         :param depth_limit:
         :return:
         """
-        tree_full = self._connection_graph_from_to(from_node, to_node, depth_limit)
+        tree_full = self._connection_graph_from_to(
+            from_node, to_node, depth_limit)
 
         def __recursion(node_from, depth_level, path):
             for _, node_to, depth in tree_full.out_edges(node_from, keys=True):
                 if depth == depth_level:
-                    path.add_edge(node_from, node_to, depth_level, **self.edges[node_from, node_to])
+                    path.add_edge(node_from, node_to, depth_level,
+                                  **self.edges[node_from, node_to])
                     if depth_level == depth_limit:
                         yield path
                     else:
@@ -215,26 +217,35 @@ class IGraphCalculator(GraphCalculator):
         pass
 
 
+class NodeInteractionCalculator(ABC):
+
+    @abstractmethod
+    def get_interaction(self, node1: Node, node2: Node) -> scipy.sparse.spmatrix:
+        pass
+
+
 class BOPGraph:
 
-    def __init__(self, node_list: List[Node], graph_calc: GraphCalculator, node_interaction_calc: Optional[Callable[[Node, Node], scipy.sparse.spmatrix]] = None):
-        self._graph_calc = graph_calc  # TODO: unexpected behavior if graph_calc was initialized before
+    def __init__(self, node_list: List[Node], graph_calc: GraphCalculator, node_interaction_calc: NodeInteractionCalculator = None):
+        # TODO: unexpected behavior if graph_calc was initialized before
+        self._graph_calc = graph_calc
         self._graph_calc.add_nodes_from(node_list)
         self.node_interaction_calc = node_interaction_calc
         # nx.adjacency_matrix(self)**L
 
     def update_edges(self, cutoff=3) -> None:
+        node_calc = self.node_interaction_calc or (lambda x, y: None)
         for node in self._graph_calc.nodes:
             if not self._graph_calc.has_edge(node, node):
                 self._graph_calc.add_edge(
-                    node, node, distance=0, phi=0, hop=self.node_interaction_calc
-                    )
+                    node, node, distance=0, phi=0, hop=node_calc(node, node)
+                )
         for (pair, distance) in self._get_distances():
             if distance <= cutoff:
                 if not self._graph_calc.has_edge(*pair):
                     self._graph_calc.add_edge(
-                        *pair, distance=distance, phi=0, hop=self.node_interaction_calc
-                        )  # TODO: add orientation angle
+                        *pair, distance=distance, phi=0, hop=node_calc(*pair)
+                    )  # TODO: add orientation angle
             else:
                 if self._graph_calc.has_edge(*pair):
                     self._graph_calc.remove_edge(*pair)
