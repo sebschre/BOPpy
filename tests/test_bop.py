@@ -3,7 +3,7 @@ import time
 import numpy as np
 from bop.atoms import BOPAtom, ValenceOrbitalParameter, ValenceOrbitalType, AtomType
 from bop.coordinate_system import Position
-from bop.graph_calculator import GraphCalculator, NxGraphCalculator, IGraphCalculator, BOPGraph
+from bop.graph_calculator import GraphCalculator, NxGraphCalculator, IGraphCalculator, BOPGraph, BOPAtomInteractionCalculator
 
 
 class TestBOPAtom(unittest.TestCase):
@@ -42,7 +42,8 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
         self.a3 = BOPAtom(Position((2, 1, 0)), 'Fe')
         self.a4 = BOPAtom(Position((2, 2, 0)), 'Fe')
         self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4],
-                           graph_calc=NxGraphCalculator())
+                           graph_calc=NxGraphCalculator(),
+                           node_interaction_calc=BOPAtomInteractionCalculator())
 
     def tearDown(self):
         t = time.time() - self.startTime
@@ -74,7 +75,12 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
     def test_all_paths_from_to(self):
         self.bg.update_edges(cutoff=2)
         for path in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, depth_limit=4):
-            print(path.edges(data=True))
+            pass
+            # print(path.edges(data=True))
+    
+    def test_interference_path(self):
+        self.bg.update_edges(cutoff=2)
+        self.bg.compute_interference_path(self.a1, self.a2, 3)
 
     def test_connection_graph(self):
         self.bg.update_edges(cutoff=2)
