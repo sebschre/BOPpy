@@ -1,5 +1,6 @@
-import numpy as np
 from typing import Tuple
+
+import numpy as np
 
 
 class CoordinateSystem:
@@ -75,7 +76,7 @@ class Position:
         return Position(pos_new)
 
     def get_distance(self, other: 'Position') -> float:
-        return np.sqrt(np.sum((self.pos_global - other.pos_global)**2))
+        return np.sqrt(np.sum((self.pos_global - other.pos_global) ** 2))
 
 
 class PBCPosition(Position):

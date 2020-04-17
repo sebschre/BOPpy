@@ -1,14 +1,11 @@
-import itertools
-import copy
 from enum import Enum
-from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, \
-    Hashable, Generator
-import collections
-from abc import ABC, abstractmethod
+from typing import Tuple, Union, Iterable, Dict, Callable
+
 import numpy as np
 from periodictable import elements
+
 from bop.coordinate_system import Position
-from bop.graph_calculator import Node, GraphCalculator, NxGraphCalculator, IGraphCalculator
+from bop.graph_calculator import Node
 
 
 class ValenceOrbitalType(Enum):
@@ -53,8 +50,8 @@ class AtomType:
 
     def __eq__(self, other: 'AtomType'):
         return self.element_name == other.element_name \
-            and self.ident == other.ident \
-            and self.valence_orbital_dict == other.valence_orbital_dict
+               and self.ident == other.ident \
+               and self.valence_orbital_dict == other.valence_orbital_dict
 
     def __ne__(self, other: 'AtomType'):
         return not self == other
@@ -85,7 +82,6 @@ class BondDefinitions:
 
 
 class BOPAtom(Node):
-
     atom_number = 0
 
     def __init__(self,

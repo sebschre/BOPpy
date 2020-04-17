@@ -1,9 +1,11 @@
-import unittest
 import time
+import unittest
+
 import numpy as np
+
 from bop.atoms import BOPAtom, ValenceOrbitalParameter, ValenceOrbitalType, AtomType
 from bop.coordinate_system import Position
-from bop.graph_calculator import GraphCalculator, NxGraphCalculator, IGraphCalculator, BOPGraph, BOPAtomInteractionCalculator
+from bop.graph_calculator import NxGraphCalculator, IGraphCalculator, BOPGraph, BOPAtomInteractionCalculator
 
 
 class TestBOPAtom(unittest.TestCase):
@@ -77,10 +79,14 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
         for path in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, depth_limit=4):
             pass
             # print(path.edges(data=True))
-    
+
     def test_interference_path(self):
         self.bg.update_edges(cutoff=2)
-        self.bg.compute_interference_path(self.a1, self.a2, 3)
+        print(self.bg.compute_interference_path(self.a1, self.a2, 4))
+
+    def test_moment_path(self):
+        self.bg.update_edges(cutoff=2)
+        print(self.bg.compute_interference_path(self.a1, self.a1, 4))
 
     def test_connection_graph(self):
         self.bg.update_edges(cutoff=2)

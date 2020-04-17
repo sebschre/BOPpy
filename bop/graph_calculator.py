@@ -1,11 +1,13 @@
-from abc import ABC, abstractmethod
-from typing import List, Iterator, TypeVar, Tuple, Union, Container, Iterable, Set, Dict, Mapping, Callable, FrozenSet, Hashable, Generator, Optional
-import itertools
 import functools
+import itertools
+from abc import ABC, abstractmethod
+from typing import List, Iterator, TypeVar, Tuple, Iterable
+
+import igraph as igr
+import networkx as nx
 import numpy as np
 import scipy
-import networkx as nx
-import igraph as igr
+from scipy.spatial.transform import Rotation as R
 
 
 class Node(ABC):
@@ -57,17 +59,18 @@ class GraphCalculator(ABC):
                 for neighbor in self._neighbors(node):
                     yield (node, neighbor, level)
                     yield from __recursion(neighbor, depth_remaining - 1)
+
         yield from __recursion(initial_node, depth)
 
     def all_paths(self, initial_node: Node, depth: int):
         path = [None] * depth
         for level, edge in self.depth_limited_search(initial_node, depth=depth):
-            path[level-1] = edge
+            path[level - 1] = edge
             if level == depth:
                 yield path
 
     @abstractmethod
-    def all_paths_from_to(self, from_node: Node, to_node: Node, depth_limit: int):
+    def all_paths_from_to(self, from_node: Node, to_node: Node, depth_limit: int) -> Iterable[nx.MultiDiGraph]:
         pass
         # for path in self.all_paths(initial_node=initial_node, depth=depth):
         #     if path[-1][-1] == final_node:
@@ -144,7 +147,7 @@ class NxGraphCalculator(GraphCalculator):
             from_node, to_node, depth_limit)
         return nx.compose(tree1, tree2)
 
-    def all_paths_from_to(self, from_node: Node, to_node: Node, depth_limit: int):
+    def all_paths_from_to(self, from_node: Node, to_node: Node, depth_limit: int) -> Iterable[nx.MultiDiGraph]:
         """
         TODO: come up with more performant solution
         :param from_node:
@@ -223,6 +226,7 @@ class NodeInteractionCalculator(ABC):
     @abstractmethod
     def get_interaction(self, node1: Node, node2: Node) -> scipy.sparse.spmatrix:
         pass
+        # return scipy.sparse.dia_matrxi(np.zeros(1, 1))
 
 
 class BOPAtomInteractionCalculator(NodeInteractionCalculator):
@@ -231,7 +235,7 @@ class BOPAtomInteractionCalculator(NodeInteractionCalculator):
         if node1 != node2:
             data = np.array([[1, 2, 3, 4]])
             offsets = np.array([0])
-            sparse_matrix = scipy.sparse.dia_matrix((data, offsets), shape=(4,4))
+            sparse_matrix = scipy.sparse.dia_matrix((data, offsets), shape=(4, 4))
         else:
             sparse_matrix = scipy.sparse.dia_matrix(np.eye(4))
         return sparse_matrix
@@ -239,7 +243,8 @@ class BOPAtomInteractionCalculator(NodeInteractionCalculator):
 
 class BOPGraph:
 
-    def __init__(self, node_list: List[Node], graph_calc: GraphCalculator, node_interaction_calc: NodeInteractionCalculator = None):
+    def __init__(self, node_list: List[Node], graph_calc: GraphCalculator,
+                 node_interaction_calc: NodeInteractionCalculator = None):
         # TODO: unexpected behavior if graph_calc was initialized before
         self._graph_calc = graph_calc
         self._graph_calc.add_nodes_from(node_list)
@@ -247,36 +252,38 @@ class BOPGraph:
         # nx.adjacency_matrix(self)**L
 
     def update_edges(self, cutoff=3) -> None:
-        if self.node_interaction_calc:
-            node_calc = self.node_interaction_calc.get_interaction
-        else:
-            node_calc = lambda x, y: None
+        def __node_interaction(n1, n2):
+            return self.node_interaction_calc.get_interaction(n1, n2) if self.node_interaction_calc else None
+
+        # first add the "onsite hops"
         for node in self._graph_calc.nodes:
             if not self._graph_calc.has_edge(node, node):
+                onsite_hop = __node_interaction(node, node)
                 self._graph_calc.add_edge(
-                    node, node, distance=0, phi=0, hop=node_calc(node, node)
+                    node, node, distance=0, hop=onsite_hop, rot=R.from_quat([1, 0, 0, 0])
                 )
+        # then find all neighboring nodes and add edges if distance <= cutoff
         for (pair, distance) in self._get_distances():
             if distance <= cutoff:
                 if not self._graph_calc.has_edge(*pair):
+                    hop = __node_interaction(*pair)
                     self._graph_calc.add_edge(
-                        *pair, distance=distance, phi=0, hop=node_calc(*pair)
-                    )  # TODO: add orientation angle
+                        *pair, distance=distance, hop=hop, rot=R.from_quat([1, 0, 0, 0])
+                    )
             else:
                 if self._graph_calc.has_edge(*pair):
                     self._graph_calc.remove_edge(*pair)
-    
+
     @staticmethod
-    def _multiply_hops_in_path(path: nx.MultiDiGraph):
-        return functools.reduce(
-            lambda hop_dense1, hop_dense2: np.dot(hop_dense1, hop_dense2),
-            [x[2]['hop'].toarray() for x in path.edges(data=True)]
-            )
-    
+    def _multiply_hops_in_path(path: nx.MultiDiGraph) -> np.ndarray:
+        __hop_list = [x[2]['hop'].toarray() for x in path.edges(data=True) if x[2]['hop'] is not None]
+        return functools.reduce(lambda hop1, hop2: np.dot(hop1, hop2), __hop_list)
+
     def compute_interference_path(self, from_node: Node, to_node: Node, depth: int):
-        for path in self._graph_calc.all_paths_from_to(from_node, to_node, depth):
-            print(path.edges)
-            print(self._multiply_hops_in_path(path))
+        return functools.reduce(
+            lambda x, y: x + y,
+            [self._multiply_hops_in_path(x) for x in self._graph_calc.all_paths_from_to(from_node, to_node, depth)]
+        )
 
     def _get_distances(self) -> Iterator[Tuple[Tuple[Node, Node], float]]:
         """
