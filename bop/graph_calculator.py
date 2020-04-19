@@ -2,9 +2,12 @@ import functools
 import itertools
 from abc import ABC, abstractmethod
 from typing import List, Iterator, TypeVar, Tuple, Iterable
+import time
 
 import igraph as igr
 import networkx as nx
+import numba as nb
+from numba import jit
 import numpy as np
 import scipy
 from scipy.spatial.transform import Rotation as R
@@ -149,7 +152,7 @@ class NxGraphCalculator(GraphCalculator):
 
     def all_paths_from_to(self, from_node: Node, to_node: Node, depth_limit: int) -> Iterable[nx.MultiDiGraph]:
         """
-        TODO: come up with more performant solution
+        TODO: implement more performant solution
         :param from_node:
         :param to_node:
         :param depth_limit:
@@ -235,9 +238,9 @@ class BOPAtomInteractionCalculator(NodeInteractionCalculator):
         if node1 != node2:
             data = np.array([[1, 2, 3, 4]])
             offsets = np.array([0])
-            sparse_matrix = scipy.sparse.dia_matrix((data, offsets), shape=(4, 4))
+            sparse_matrix = scipy.sparse.dia_matrix(np.random.rand(4, 4), dtype=np.float)
         else:
-            sparse_matrix = scipy.sparse.dia_matrix(np.eye(4))
+            sparse_matrix = scipy.sparse.dia_matrix(np.random.rand(4, 4), dtype=np.float)
         return sparse_matrix
 
 
@@ -274,15 +277,10 @@ class BOPGraph:
                 if self._graph_calc.has_edge(*pair):
                     self._graph_calc.remove_edge(*pair)
 
-    @staticmethod
-    def _multiply_hops_in_path(path: nx.MultiDiGraph) -> np.ndarray:
-        __hop_list = [x[2]['hop'].toarray() for x in path.edges(data=True) if x[2]['hop'] is not None]
-        return functools.reduce(lambda hop1, hop2: np.dot(hop1, hop2), __hop_list)
-
     def compute_interference_path(self, from_node: Node, to_node: Node, depth: int):
         return functools.reduce(
             lambda x, y: x + y,
-            [self._multiply_hops_in_path(x) for x in self._graph_calc.all_paths_from_to(from_node, to_node, depth)]
+            [_multiply_hops_in_path(x) for x in self._graph_calc.all_paths_from_to(from_node, to_node, depth)]
         )
 
     def _get_distances(self) -> Iterator[Tuple[Tuple[Node, Node], float]]:
@@ -292,6 +290,31 @@ class BOPGraph:
         """
         for pair in circular_pairwise(self._graph_calc.nodes):
             yield (pair, pair[0].get_distance(pair[1]))
+
+
+@jit(nopython=True)
+def numba_dot(m1, m2):
+    return np.dot(m1, m2)
+
+
+@jit(nopython=True)
+def _multiply_arrays_njit(arrays: np.ndarray) -> np.ndarray:
+    arr_result = arrays[0]
+    for i in range(1, len(arrays)):
+        arr_result = numba_dot(arr_result, arrays[i])
+    return arr_result
+
+
+def _multiply_arrays(arrays: np.ndarray) -> np.ndarray:
+    return functools.reduce(np.dot, arrays)
+
+
+def _multiply_hops_in_path(path: nx.MultiDiGraph, with_njit=False) -> np.ndarray:
+    __hop_list = [x[2]['hop'].toarray() for x in path.edges(data=True) if x[2]['hop'] is not None]
+    if with_njit:
+        return _multiply_arrays_njit(np.array(__hop_list))
+    else:
+        return _multiply_arrays(np.array(__hop_list))
 
 
 T = TypeVar('T')
