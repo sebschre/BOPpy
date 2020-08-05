@@ -7,10 +7,10 @@ from bop.coordinate_system import CoordinateSystem, Position
 class TestCoordinateSystem(unittest.TestCase):
 
     def test_equality_of_coordinate_systems(self):
-        cs = CoordinateSystem()
-        rot = R.from_quat([0, 0, np.sin(np.pi/4), np.cos(np.pi/4)])
+        cs = CoordinateSystem(np.random.random((3, 3)))
+        rot = R.from_matrix(np.eye(3))
         rot_cs = CoordinateSystem(rot.apply(cs.axes))
-        self.assertAlmostEqual(rot_cs, cs)
+        np.testing.assert_almost_equal(rot_cs.axes, cs.axes)
 
 
 class TestPosition(unittest.TestCase):

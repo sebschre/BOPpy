@@ -252,6 +252,7 @@ class BOPGraph:
         self._graph_calc = graph_calc
         self._graph_calc.add_nodes_from(node_list)
         self.node_interaction_calc = node_interaction_calc
+        self.interference_paths = dict()
         # nx.adjacency_matrix(self)**L
 
     def update_edges(self, cutoff=3) -> None:
@@ -282,6 +283,37 @@ class BOPGraph:
             lambda x, y: x + y,
             [_multiply_hops_in_path(x) for x in self._graph_calc.all_paths_from_to(from_node, to_node, depth)]
         )
+
+    def compute_interference_path_2(self, from_node: Node, to_node, depth: int):
+        for path in self._graph_calc.all_paths_from_to(from_node, to_node, depth):
+            edges_in_path = path.edges(data=True)
+            # check if this path has been computed before
+            nodes_in_path = tuple(x[0] for x in edges_in_path) + (to_node, )
+            # find longest previously computed and saved interference path
+            nodes_key = nodes_in_path
+            while len(nodes_key) > 2:
+                if nodes_key not in self.interference_paths.keys():
+                    nodes_key = nodes_key[:-1]
+                else:
+                    break
+            if len(nodes_key) > 2:
+                saved_interf_path = self.interference_paths[nodes_key]
+                remaining_hops = list(edges_in_path)[len(nodes_key)-1:]
+
+
+            for node1, node2, edge_data in path.edges(data=True):
+                if (node1, node2) not in self.interference_paths.keys():
+                    self.interference_paths[(node1, node2)] = _multiply_arrays(edge_data['hop'].toarray())
+                    print(self.interference_paths)
+        print('global')
+        print(self.interference_paths)
+
+    def compute_all_interference_paths(self, depth: int):
+        # TODO: improve performance... i < j
+        for node1 in self._graph_calc.nodes:
+            for node2 in self._graph_calc.nodes:
+                self.compute_interference_path(from_node=node1, to_node=node2, depth=depth)
+
 
     def _get_distances(self) -> Iterator[Tuple[Tuple[Node, Node], float]]:
         """

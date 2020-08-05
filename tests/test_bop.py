@@ -50,7 +50,7 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
                            node_interaction_calc=BOPAtomInteractionCalculator())
 
     def tearDown(self):
-        pass
+        del self.a1, self.a2, self.a3, self.a4, self.bg
         # t = time.time() - self.startTime
         # print(f"{self.id()}: \t{t:.4f}s")
 
@@ -85,7 +85,15 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
 
     def test_interference_path(self):
         self.bg.update_edges(cutoff=2)
-        print(self.bg.compute_interference_path(self.a1, self.a2, 9))
+        self.bg.compute_interference_path(self.a1, self.a2, 9)
+
+    def test_interference_path_2(self):
+        self.bg.update_edges(cutoff=2)
+        self.bg.compute_interference_path_2(self.a1, self.a2, 9)
+
+    def test_all_interference_path(self):
+        self.bg.update_edges(cutoff=2)
+        self.bg.compute_all_interference_paths(7)
 
     def test_moment_path(self):
         self.bg.update_edges(cutoff=2)
@@ -98,21 +106,39 @@ class TestBOPGraphWithNxGraph(unittest.TestCase):
 
     def test_interference_path_without_njit(self):
         self.bg.update_edges(cutoff=2)
-        for i in range(500):
-            functools.reduce(
-                lambda x, y: x + y,
-                [_multiply_hops_in_path(x, with_njit=False)
-                 for x in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, 4)]
-            )
+        # for i in range(500):
+        functools.reduce(
+            lambda x, y: x + y,
+            [_multiply_hops_in_path(x, with_njit=False)
+             for x in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, 6)]
+        )
+
+    def test_interference_path_without_njit2(self):
+        self.bg.update_edges(cutoff=2)
+        # for i in range(500):
+        functools.reduce(
+            lambda x, y: x + y,
+            [_multiply_hops_in_path(x, with_njit=False)
+             for x in self.bg._graph_calc.all_paths_from_to(self.a2, self.a2, 6)]
+        )
 
     def test_interference_path_with_njit(self):
         self.bg.update_edges(cutoff=2)
-        for i in range(500):
-            functools.reduce(
-                lambda x, y: x + y,
-                [_multiply_hops_in_path(x, with_njit=True)
-                 for x in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, 4)]
-            )
+        # for i in range(500):
+        functools.reduce(
+            lambda x, y: x + y,
+            [_multiply_hops_in_path(x, with_njit=True)
+             for x in self.bg._graph_calc.all_paths_from_to(self.a1, self.a2, 6)]
+        )
+
+    def test_interference_path_with_njit2(self):
+        self.bg.update_edges(cutoff=2)
+        # for i in range(500):
+        functools.reduce(
+            lambda x, y: x + y,
+            [_multiply_hops_in_path(x, with_njit=True)
+             for x in self.bg._graph_calc.all_paths_from_to(self.a2, self.a2, 6)]
+        )
 
 class TestBOPGraphWithIGraph(unittest.TestCase):
     """
@@ -126,6 +152,9 @@ class TestBOPGraphWithIGraph(unittest.TestCase):
         self.a4 = BOPAtom(Position((2, 2, 0)), 'Fe')
         self.bg = BOPGraph([self.a1, self.a2, self.a3, self.a4],
                            graph_calc=IGraphCalculator())
+
+    def tearDown(self):
+        del self.a1, self.a2, self.a3, self.a4, self.bg
 
     def test_distances(self):
         distances = list(self.bg._get_distances())
