@@ -1,13 +1,10 @@
-import time
 import unittest
 import functools
-
 import numpy as np
-
 from bop.atoms import BOPAtom, ValenceOrbitalParameter, ValenceOrbitalType, AtomType
 from bop.coordinate_system import Position
-from bop.graph_calculator import NxGraphCalculator, IGraphCalculator, BOPGraph, BOPAtomInteractionCalculator,\
-    _multiply_hops_in_path
+from bop.graph_calculator import NxGraphCalculator, IGraphCalculator
+from bop.bop_graph import BOPGraph, BOPAtomInteractionCalculator, _multiply_hops_in_path
 
 
 class TestBOPAtom(unittest.TestCase):
