@@ -1,0 +1,19 @@
+Timer unit: 1e-06 s
+
+Total time: 0.024742 s
+File: <ipython-input-77-ddfe7019cef0>
+Function: _test_interf at line 1
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     1                                           def _test_interf(with_njit=True):
+     2         1        158.0    158.0      0.6      a1 = BOPAtom(Position((0, 0, 1)), 'Fe')
+     3         1         66.0     66.0      0.3      a2 = BOPAtom(Position((0, 1, 0)), 'Fe')
+     4         1         63.0     63.0      0.3      a3 = BOPAtom(Position((2, 1, 0)), 'Fe')
+     5         1         60.0     60.0      0.2      a4 = BOPAtom(Position((2,2,0)), 'Fe')
+     6         1         65.0     65.0      0.3      bg = BOPGraph([a1, a2, a3, a4], graph_calc=NxGraphCalculator(), node_interaction_calc=BOPAtomInteractionCalculator())
+     7         1       6462.0   6462.0     26.1      bg.update_edges(cutoff=2)
+     8         1          8.0      8.0      0.0      all_paths = bg._graph_calc.all_paths_from_to(a1, a2, 4)
+     9         1          4.0      4.0      0.0      functools.reduce(lambda x, y: x + y,
+    10         1      17856.0  17856.0     72.2          [_multiply_hops_in_path(x, with_njit=with_njit) for x in all_paths]
+    11                                               )

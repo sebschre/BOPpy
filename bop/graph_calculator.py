@@ -366,3 +366,21 @@ def circular_pairwise(it: Iterable[T]) -> Iterator[Tuple[T, T]]:
         second = itertools.cycle(it)
         next(second)
         return zip(it, second)
+
+
+def _test_interf(with_njit=True):
+    from bop.atoms import BOPAtom
+    from bop.coordinate_system import Position
+    a1 = BOPAtom(Position((0, 0, 1)), 'Fe')
+    a2 = BOPAtom(Position((0, 1, 0)), 'Fe')
+    a3 = BOPAtom(Position((2, 1, 0)), 'Fe')
+    a4 = BOPAtom(Position((2, 2, 0)), 'Fe')
+    bg = BOPGraph([a1, a2, a3, a4],
+                       graph_calc=NxGraphCalculator(),
+                       node_interaction_calc=BOPAtomInteractionCalculator())
+    bg.update_edges(cutoff=2)
+    functools.reduce(
+        lambda x, y: x + y,
+        [_multiply_hops_in_path(x, with_njit=with_njit)
+         for x in bg._graph_calc.all_paths_from_to(a1, a2, 4)]
+    )
