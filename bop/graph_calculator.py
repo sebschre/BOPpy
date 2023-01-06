@@ -12,12 +12,7 @@ import numpy as np
 import scipy
 from scipy.spatial.transform import Rotation as R
 
-
-class Node(ABC):
-
-    @abstractmethod
-    def get_distance(self, other: 'Node'):
-        pass
+from bop.nodes.node import Node
 
 
 class GraphCalculator(ABC):
@@ -238,9 +233,9 @@ class BOPAtomInteractionCalculator(NodeInteractionCalculator):
         if node1 != node2:
             data = np.array([[1, 2, 3, 4]])
             offsets = np.array([0])
-            sparse_matrix = scipy.sparse.dia_matrix(np.random.rand(4, 4), dtype=np.float)
+            sparse_matrix = scipy.sparse.dia_matrix(np.random.rand(4, 4), dtype=np.float64)
         else:
-            sparse_matrix = scipy.sparse.dia_matrix(np.random.rand(4, 4), dtype=np.float)
+            sparse_matrix = scipy.sparse.dia_matrix(np.random.rand(4, 4), dtype=np.float64)
         return sparse_matrix
 
 

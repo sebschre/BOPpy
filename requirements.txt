@@ -1,11 +1,11 @@
 decorator==4.4.2
-llvmlite==0.32.0
+llvmlite==0.39.1
 networkx==2.4
 numba==0.49.0
 numpy==1.22.0
 periodictable==1.5.2
 pylint==2.4.4
 pyparsing==2.4.6
-python-igraph==0.8.0
-scipy==1.4.1
-texttable==1.6.2
+python-igraph==0.10.3
+scipy==1.10.0
+texttable==1.6.7

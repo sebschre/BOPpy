@@ -1,11 +1,15 @@
+from typing import Tuple, Union, Dict
+
+from bop.nodes.node import Node
+from bop.coordinate_system import Position
+from bop.graph_calculator import Node
+
+
 from enum import Enum
-from typing import Tuple, Union, Iterable, Dict, Callable
+from typing import Iterable, Dict, Callable
 
 import numpy as np
 from periodictable import elements
-
-from bop.coordinate_system import Position
-from bop.graph_calculator import Node
 
 
 class ValenceOrbitalType(Enum):
@@ -60,27 +64,6 @@ class AtomType:
         return f"{self.element_name}({self.ident})"
 
 
-class BondDefinitions:
-
-    def __init__(self, atom_types: Iterable[AtomType]):
-        self.atom_types = set(atom_types)
-
-    def __contains__(self, atom_type: AtomType):
-        return atom_type in self.atom_types
-
-    def get_bond_func(self, atom_type1: AtomType, atom_type2: AtomType) -> Callable:
-        """
-        TODO: make this a property?
-        :param atom_type1:
-        :param atom_type2:
-        :return:
-        """
-        if atom_type1 not in self.atom_types or atom_type2 not in self.atom_types:
-            raise ValueError(
-                f"atom type {atom_type1} or {atom_type2} not in BondDefinitions")
-        return lambda x: np.exp(-x)
-
-
 class BOPAtom(Node):
     atom_number = 0
 
@@ -111,3 +94,24 @@ class BOPAtom(Node):
 
     def get_distance(self, other: 'BOPAtom') -> float:
         return self.position.get_distance(other.position)
+
+
+class BondDefinitions:
+
+    def __init__(self, atom_types: Iterable[AtomType]):
+        self.atom_types = set(atom_types)
+
+    def __contains__(self, atom_type: AtomType):
+        return atom_type in self.atom_types
+
+    def get_bond_func(self, atom_type1: AtomType, atom_type2: AtomType) -> Callable:
+        """
+        TODO: make this a property?
+        :param atom_type1:
+        :param atom_type2:
+        :return:
+        """
+        if atom_type1 not in self.atom_types or atom_type2 not in self.atom_types:
+            raise ValueError(
+                f"atom type {atom_type1} or {atom_type2} not in BondDefinitions")
+        return lambda x: np.exp(-x)
