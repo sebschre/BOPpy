@@ -1,4 +1,4 @@
-﻿alabaster==0.7.12
+alabaster==0.7.12
 astroid==2.3.3
 autopep8==1.5.1
 Babel==2.9.1
@@ -15,7 +15,7 @@ MarkupSafe==1.1.1
 mccabe==0.6.1
 packaging==20.3
 pycodestyle==2.5.0
-Pygments==2.7.4
+Pygments==2.15.0
 pytz==2019.3
 requests==2.23.0
 six==1.14.0
